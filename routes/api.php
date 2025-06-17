@@ -164,6 +164,8 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::post('/request', 'sendRequest');
         Route::get('/get', 'get');
         Route::post('/chat/group/create', 'groupCreate');
+        Route::get('/info/{id}', 'info');
+        Route::post('/member', 'member');
     });
 
     // All Filter 

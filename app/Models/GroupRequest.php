@@ -11,7 +11,7 @@ class GroupRequest extends Model
 
     public function conversation()
     {
-        return $this->hasOne(Conversation::class,'id');
+        return $this->belongsTo(Conversation::class, 'conversation_id');
     }
 
     public function user()

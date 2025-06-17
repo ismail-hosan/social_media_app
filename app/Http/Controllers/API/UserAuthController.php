@@ -223,7 +223,7 @@ class UserAuthController extends Controller
         $user->save();
 
         // Send OTP notification
-        $user->notify(new OtpNotification($otp));
+        // $user->notify(new OtpNotification($otp));
 
         return $this->success(['otp' => $otp], 'Check your email for the password reset OTP.', 200);
     }
