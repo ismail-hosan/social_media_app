@@ -59,8 +59,12 @@ class FollowController extends Controller
         }
 
         $user_id = auth()->id();
-        $follower_id = $request->input('follower_id');
 
+
+        $follower_id = $request->input('follower_id');
+        if ($user_id === (int) $follower_id) {
+            return $this->error([], 'You cannot follow yourself.', 422);
+        }
         $existingFollow = Follow::where('user_id', $user_id)
             ->where('follower_id', $follower_id)
             ->first();
@@ -103,7 +107,7 @@ class FollowController extends Controller
         // Get posts only from followed users and self
         $posts = Post::whereIn('user_id', $followingIds)
             ->where('user_id', '!=', $userId)
-            ->with(['user', 'tags','images'])
+            ->with(['user', 'tags', 'images'])
             ->withCount(['likes', 'comments', 'repost'])
             ->with(['bookmarks' => function ($q) use ($userId) {
                 $q->where('user_id', $userId);

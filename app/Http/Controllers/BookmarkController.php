@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bookmark;
 use App\Models\Post;
 use App\Models\Reel;
+use App\Models\User;
 use App\Traits\apiresponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -87,7 +88,7 @@ class BookmarkController extends Controller
     {
         $validated = $request->validate([
             'bookmarkable_id' => 'required|integer',
-            'type' => 'required|string|in:post,reel', // only allow these two
+            'type' => 'required|string|in:post,profile', // only allow these two
         ]);
 
         $user = auth()->user();
@@ -95,7 +96,7 @@ class BookmarkController extends Controller
         // Determine the model class based on the 'type'
         $bookmarkableType = match ($validated['type']) {
             'post' => Post::class,
-            'reel' => Reel::class,
+            'profile' => User::class,
         };
 
         // Check if already bookmarked

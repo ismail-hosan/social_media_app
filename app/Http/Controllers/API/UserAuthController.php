@@ -343,11 +343,33 @@ class UserAuthController extends Controller
     public function profileMe(Request $request)
     {
         try {
-            $user = auth()->user();
+            $authUser = auth()->user();
+            $user = $authUser;
 
-            if ($request->filled('user_id') && $request->user_id != $user->id) {
-                $user = User::findOrFail($request->user_id);
+            // If a different user_id is passed and it's not the current user
+            if ($request->filled('user_id') && $request->user_id != $authUser->id) {
+                $user = User::find($request->user_id);
+
+                if (!$user) {
+                    return $this->error('User not found', 404);
+                }
             }
+
+            // Get list of users this user has liked
+            $likedUsers = $user->likes()
+                ->with('likeable.socalMedia') // Eager load socalMedia from the likeable (User)
+                ->get()
+                ->filter(function ($like) {
+                    return $like->likeable instanceof \App\Models\User;
+                })
+                ->map(function ($like) {
+                    return [
+                        'id' => $like->likeable->id,
+                        'name' => $like->likeable->name,
+                        'avatar' => $like->likeable->avatar,
+                        'social_media' => $like->likeable->socalMedia ?? null,
+                    ];
+                });
 
             $response = [
                 'id' => $user->id,
@@ -355,19 +377,20 @@ class UserAuthController extends Controller
                 'avatar' => $user->avatar ?? null,
                 'cover_image' => $user->cover_image ?? null,
                 'username' => $user->username,
+                'bio' => $user->bio,
                 'joined' => 'Joined ' . $user->created_at->format('M Y'),
-                'follower' => $user->followers()->count(),
-                'following' => $user->following()->count(),
-                'post' => $user->posts()->count(),
+                'liked_users' => $likedUsers,
+                'media' => $user->socalMedia
             ];
 
             return $this->success([
                 'user' => $response,
             ], 'User retrieved successfully', 200);
-        } catch (ModelNotFoundException $e) {
-            return $this->error('User not found', 404);
+        } catch (\Exception $e) {
+            return $this->error('Something went wrong: ' . $e->getMessage(), 500);
         }
     }
+
 
 
 

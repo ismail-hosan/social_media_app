@@ -35,39 +35,66 @@ class PostController extends Controller
         if ($request->user_id) {
             $user_id = $request->user_id;
         }
-        // Get paginated posts
-        $posts = $this->posts->where('user_id', $user_id)
-            ->with(['user', 'tags', 'images'])
-            ->withCount(['likes', 'comments', 'repost'])
+
+        $liked = $request->liked; // Accept true or false
+
+        $query = $this->posts
+            ->where('user_id', $user_id)
+            ->with(['user:id,name,avatar', 'tags'])
+            ->withCount(['likes', 'comments'])
             ->with(['bookmarks' => function ($q) use ($user_id) {
                 $q->where('user_id', $user_id);
-            }])
-            ->latest()
-            ->get();
+            }]);
 
-        // Add bookmark status
+        if (!is_null($liked)) {
+            if (filter_var($liked, FILTER_VALIDATE_BOOLEAN)) {
+                $query->whereHas('likes', function ($q) use ($user_id) {
+                    $q->where('user_id', $user_id);
+                });
+            } else {
+                $query->whereDoesntHave('likes', function ($q) use ($user_id) {
+                    $q->where('user_id', $user_id);
+                });
+            }
+        }
+
+        $posts = $query->latest()->get();
+
         $posts->transform(function ($post) {
             $post->is_bookmarked = $post->bookmarks->isNotEmpty();
-            $post->is_repost = $post->repost->isNotEmpty();
-            $post->is_likes = $post->likes->isNotEmpty();
+            $post->is_likes = $post->likes_count > 0;
+            $post->created_date = $post->created_at->format('M d, Y');
+
+            if ($post->unknown === 1) {
+                unset($post->user);
+                $post->user = (object) [
+                    'name' => 'Unknown',
+                    'avatar' => null
+                ];
+            }
+
             unset($post->repost);
             unset($post->bookmarks);
-            unset($post->likes);
+
             return $post;
         });
-        return $this->success($posts, 'Comment fetch successfully!', 200);
+
+        return $this->success($posts, 'Posts fetched successfully!', 200);
     }
+
+
+
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'title' => 'nullable|string',
-            'description' => 'nullable|string',
-            'image' => 'nullable|array',
-            'image.*' => 'image',  // Each file in the array must be an image
+            'title' => 'required|string',
+            'description' => 'required|string',
+            'tag' => 'nullable|array',
+            'unknown' => 'required|boolean',
+            'image' => 'nullable|image',
         ]);
 
-
-        // Check if validation fails
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
@@ -75,71 +102,46 @@ class PostController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
-        // Get the authenticated user
+
         $user = auth()->user();
 
-        // Upload the image (only if image is provided)
-        // $image_url = null;
-        // if ($request->hasFile('image')) {
-        //     $image_url = Helper::uploadImage($request->image, 'post');
-        // }
         try {
-            $image_urls = [];
+            $image_url = null;
+
+            // Upload image if present
             if ($request->hasFile('image')) {
-                foreach ($request->file('image') as $imageFile) {
-                    // $uploadedUrl = Helper::uploadToS3($imageFile);
-                    // Store the file in the 'location_cover' directory on the 's3' disk
-                    $uploadedUrl = Storage::disk('s3')->put('post', $imageFile);
-
-                    // If you want the full URL, use 'url' instead of 'put'
-                    // $uploadedUrl = Storage::disk('s3')->url($uploadedUrl);
-
-                    $image_urls[] = $uploadedUrl;
-                }
+                $image_url = Helper::uploadImage($request->image, 'post');
             }
 
-
-            // Create the post (title, description, and image_url are optional)
+            // Create the post
             $post = $this->posts->create([
                 'user_id' => $user->id,
                 'title' => $request->title,
                 'description' => $request->description,
+                'file_url' => $image_url,
+                'unknown' => $request->unknown,
             ]);
 
-            foreach ($image_urls as $url) {
-                StoryImage::create([
-                    'post_id' => $post->id,
-                    'file_url' => $url,
-                ]);
+            // Store tags from the "tag" array (not from description hashtags)
+            if ($request->has('tag')) {
+                foreach ($request->tag as $tagText) {
+                    Tag::create([
+                        'post_id' => $post->id,
+                        'text' => $tagText,
+                    ]);
+                }
             }
 
-            // Extract hashtags from description if it exists
-            preg_match_all('/#(\w+)/', $request->description, $matches);
-            $hashtags = $matches[1];
-
-            // Store hashtags
-            foreach ($hashtags as $tagText) {
-                Tag::create([
-                    'post_id' => $post->id,
-                    'text' => $tagText
-                ]);
-            }
-
-            // Extract mentions from description if it exists
+            // Handle mentions from the description
             preg_match_all('/@(\w+)/', $request->description, $mentionMatches);
             $mentions = $mentionMatches[1];
-
-            // Store mentions (associating with users)
             foreach ($mentions as $mentionText) {
-                // Find user by their username or slug (you might need to adjust this based on your user model)
                 $mentionedUser = User::where('username', $mentionText)->first();
-
-                // If a user is found, store the mention
                 if ($mentionedUser) {
                     Mention::create([
                         'post_id' => $post->id,
-                        'user_id' => auth()->user()->id,
-                        'mentioned_id' => $mentionedUser->id, // The user who created the post
+                        'user_id' => $user->id,
+                        'mentioned_id' => $mentionedUser->id,
                     ]);
                 }
             }
@@ -149,7 +151,6 @@ class PostController extends Controller
             return $this->error($th->getMessage(), 'Error');
         }
     }
-
 
 
     public function forYou(Request $request)

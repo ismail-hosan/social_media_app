@@ -9,6 +9,7 @@ use Namu\WireChat\Traits\Chatable;
 use Spatie\Permission\Traits\HasRoles;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -59,6 +60,12 @@ class User extends Authenticatable implements JWTSubject
     public function getCoverImageAttribute($value)
     {
         return $value ? url($value) : null;
+    }
+
+    public function likes()
+    {
+        return $this->hasMany(Like::class, 'user_id')
+            ->where('likeable_type', User::class);
     }
 
 
@@ -150,11 +157,16 @@ class User extends Authenticatable implements JWTSubject
 
     public function posts()
     {
-        return $this->belongsToMany(Post::class, 'reposts', 'user_id', 'post_id')->withTimestamps();
+        return $this->hasMany(Post::class,  'user_id');
     }
 
     public function notifications()
     {
         return $this->morphMany(Notification::class, 'notifiable');
+    }
+
+    public function socalMedia()
+    {
+        return $this->hasMany(SocialMediaLink::class, 'user_id');
     }
 }

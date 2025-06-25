@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Like;
 use App\Models\Post;
 use App\Models\Reel;
+use App\Models\User;
 use App\Traits\apiresponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -31,20 +32,16 @@ class LikeController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'likeable_id' => 'required|integer',
-            'likeable_type' => 'required|in:post,reel',
+            'likeable_id' => 'required|integer|exists:posts,id',
+            'likeable_type' => 'required|in:post,user',
             'type' => 'required'
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+            return $this->error([], [$validator->errors()], 422);
         }
 
-        $model = $request->likeable_type === 'post' ? Post::class : Reel::class;
+        $model = $request->likeable_type === 'post' ? Post::class : User::class;
         $like = Like::where([
             'user_id' => auth()->user()->id,
             'likeable_id' => $request->likeable_id,

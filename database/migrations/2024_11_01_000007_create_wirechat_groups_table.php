@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('name')->nullable();
             $table->text('description')->nullable();
             $table->string('avatar_url')->nullable();
-            $table->string('type')->default('private');
+            $table->string('type')->default('public');
 
             // Permissions
             $table->boolean('allow_members_to_send_messages')->default(true);

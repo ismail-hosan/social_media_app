@@ -11,6 +11,7 @@ use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\PostController;
 use App\Http\Controllers\API\RecentController;
 use App\Http\Controllers\API\ReelsController;
+use App\Http\Controllers\API\SocalMediaLinkController;
 use App\Http\Controllers\API\StoryController;
 use App\Http\Controllers\API\StripeController;
 use App\Http\Controllers\API\TagsController;
@@ -76,6 +77,12 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
     Route::controller(CommentController::class)->prefix('comment')->group(function () {
         Route::post('store', 'store');
         Route::get('get/{type}/{id}', 'index');
+    });
+
+    // User Socal Media Link
+    Route::controller(SocalMediaLinkController::class)->prefix('socal')->group(function () {
+        Route::post('store', 'store');
+        Route::get('get', 'index');
     });
 
     // All Repost route
