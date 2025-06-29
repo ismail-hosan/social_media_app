@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Events\NewMessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\GroupRequest;
 use App\Models\User;
@@ -146,7 +147,7 @@ class GroupController extends Controller
 
             // Send the message
             $message = $auth->sendMessageTo($conversation, $validated['message']);
-
+            broadcast(new NewMessageSent($message))->toOthers();
             return $this->success($message, 'Message sent successfully!', 200);
         } catch (HttpException $e) {
             return $this->error([], [$e->getMessage()], 403);
@@ -244,7 +245,7 @@ class GroupController extends Controller
             ];
         });
 
-        return $this->success($formattedRequests,'Data Fetch Successfully',200);
+        return $this->success($formattedRequests, 'Data Fetch Successfully', 200);
     }
 
     public function groupCreate(Request $request)

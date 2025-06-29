@@ -20,5 +20,5 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-
+/public/build
 .codegpt

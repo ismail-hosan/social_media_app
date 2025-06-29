@@ -367,7 +367,7 @@ class UserAuthController extends Controller
                         'id' => $like->likeable->id,
                         'name' => $like->likeable->name,
                         'avatar' => $like->likeable->avatar,
-                        'social_media' => $like->likeable->socalMedia ?? null,
+                        // 'social_media' => $like->likeable->socalMedia ?? null,
                     ];
                 });
 

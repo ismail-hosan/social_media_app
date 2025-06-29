@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Events\NewMessageSent;
 use App\Helper\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\BlockUser;
-use App\Models\Chat;
-use App\Models\Message;
 use App\Models\MessageReact;
 use App\Models\User;
 use App\Traits\apiresponse;
@@ -15,10 +14,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Namu\WireChat\Enums\ConversationType;
 use Namu\WireChat\Events\MessageCreated;
 use Namu\WireChat\Events\NotifyParticipant;
 use Namu\WireChat\Models\Conversation;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ChatController extends Controller
 {
@@ -27,36 +26,69 @@ class ChatController extends Controller
 
     public function getConversations(Request $request)
     {
-        // Get the authenticated user
         $user = auth()->user();
 
         $conversations = $user->conversations()
-            ->where('type', $request->type)
+            ->when($request->filled('type'), function ($query) use ($request, $user) {
+                switch ($request->type) {
+                    case 'private':
+                        $query->where('type', 'private');
+                        break;
+
+                    case 'group':
+                        $query->where('type', 'group');
+                        break;
+
+                    case 'my_own_group':
+                        $query->where('type', 'group')
+                            ->whereHas('participants', function ($q) use ($user) {
+                                $q->where('participantable_id', $user->id)
+                                    ->where('participantable_type', get_class($user))
+                                    ->where('role', 'owner');
+                            });
+                        break;
+                }
+            })
             ->with([
                 'participants' => function ($query) {
                     $query->where('participantable_id', '!=', auth()->id())
                         ->select('participantable_type', 'participantable_id', 'conversation_id')
                         ->with('participantable:id,name,avatar');
                 },
+                'group.cover',
                 'lastMessage'
             ])
-            ->select('wire_conversations.id')
+            ->select('wire_conversations.id', 'wire_conversations.type') 
+            ->orderByDesc(\DB::raw('(SELECT created_at FROM wire_messages WHERE wire_messages.conversation_id = wire_conversations.id ORDER BY created_at DESC LIMIT 1)'))
             ->get();
 
-        // Transform the conversations
-        $conversations->transform(function ($conversation) {
-            $isReadByAuth = $conversation->readBy($conversation->authParticipant ?? auth()->user()) || $conversation->id == request()->input('selectedConversationId');
-            $conversation->readable = $isReadByAuth ? true : false;
-            unset($conversation->authParticipant);
-            unset($conversation->pivot);
+        // Transform the conversations for frontend consumption
+        $conversations->transform(function ($conversation) use ($request) {
+            $authParticipant = $conversation->authParticipant ?? auth()->user();
+
+            $isReadByAuth = $conversation->readBy($authParticipant)
+                || $conversation->id == $request->input('selectedConversationId');
+
+            $conversation->readable = $isReadByAuth;
+            // dd($conversation->type);
+
+            // Conditionally remove irrelevant data
+            if ($conversation->type === ConversationType::GROUP) {
+                unset($conversation->participants); // Hide participants for group
+            } elseif ($conversation->type === ConversationType::PRIVATE) {
+                unset($conversation->group); // Hide group info for private
+            }
+
+            unset($conversation->authParticipant, $conversation->pivot);
+
             return $conversation;
         });
 
-        // Return response
         return $this->success([
             'conversations' => $conversations,
-        ], "Private conversations fetched successfully", 200);
+        ], "Conversations fetched successfully", 200);
     }
+
 
 
     public function sendMessage(Request $request)
@@ -97,8 +129,9 @@ class ChatController extends Controller
             $message = $auth->sendMessageTo($recipient, $sendMessage);
 
             // Broadcast events after successful message creation
+            broadcast(new NewMessageSent($message))->toOthers();
             broadcast(new MessageCreated($message));
-            broadcast(new NotifyParticipant($message->conversation->participant($recipient), $message));
+            // broadcast(new NotifyParticipant($message->conversation->participant($recipient), $message));
             DB::commit();
 
             return $this->success(['message' => $message], "Message sent successfully", 200);
@@ -113,13 +146,13 @@ class ChatController extends Controller
     {
         $user = auth()->user();
 
-        // Get the conversation and eager load messages and their senders
+        // Get the conversation and eager load relationships
         $conversation = Conversation::with([
             'messages.sendable',
             'messages.react',
             'group.cover'
         ])
-            ->select('wire_conversations.id')
+            ->select('wire_conversations.id', 'wire_conversations.type')
             ->findOrFail($id);
 
         // Mark the conversation as read
@@ -146,18 +179,33 @@ class ChatController extends Controller
             ];
         });
 
-        // Extract group information if it exists
-        $group = $conversation->group;
-        $groupInfo = $group ? [
-            'id' => $group->id,
-            'name' => $group->name,
-            'avatar' => $group->avatar_url ?? null,
-            'cover_image' => $group->cover->url ?? null, // Assumes 'url' field or accessor on cover model
-        ] : null;
+        // Determine top info (either group or receiver)
+        $topInfo = null;
+
+        if ($conversation->type === ConversationType::GROUP) {
+            $group = $conversation->group;
+            $topInfo = [
+                'type' => 'group',
+                'id' => $group->id ?? null,
+                'name' => $group->name ?? null,
+                'avatar' => $group->avatar_url ?? null,
+                'cover_image' => $group->cover->url ?? null,
+            ];
+        } else {
+            // Call the getReceiver() method manually
+            $receiver = $conversation->getReceiver();
+            $topInfo = [
+                'type' => 'private',
+                'id' => $receiver->id ?? null,
+                'name' => $receiver->name ?? null,
+                'avatar' => $receiver->avatar_url ?? $receiver->avatar ?? null,
+            ];
+        }
 
         return $this->success([
+            'my_id' => $user->id,
             'conversation_id' => $conversation->id,
-            'group' => $groupInfo,
+            'top_info' => $topInfo,
             'messages' => $messages,
         ], "Conversation fetched successfully", 200);
     }
@@ -238,7 +286,7 @@ class ChatController extends Controller
                 'message_id' => $request->message_id,
             ],
             [
-                'reaction' => $request->react,
+                'react' => $request->react,
             ]
         );
 

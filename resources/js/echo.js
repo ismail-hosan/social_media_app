@@ -13,10 +13,18 @@ window.Echo = new Echo({
     enabledTransports: ["ws", "wss"],
 });
 
+console.log(1);
 
-// window.Echo.private(`chat.2`).listen("NewMessageSent", (e) => {
-//     console.log("Message Body:", e.message.body);
-// });
+// window.Echo.private(`conversation.1`).listen(
+//     ".Namu\\WireChat\\Events\\MessageCreated",
+//     (e) => {
+//         console.log("Message Body:", e.message.id);
+//     }
+// );
+
+window.Echo.private(`chat.17`).listen(".App\\Events\\NewMessageSent", (e) => {
+    console.log("Message:", e);
+});
 
 // window.Echo.private(`participant.4170705c4d6f64656c735c55736572.1`).listen(
 //     ".Namu\\WireChat\\Events\\NotifyParticipant",

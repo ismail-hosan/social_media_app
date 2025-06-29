@@ -8,40 +8,18 @@ use App\Models\Post;
 use App\Models\User;
 use App\Traits\apiresponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class FollowController extends Controller
 {
     use apiresponse;
-    public function index()
-    {
-        $userId = auth()->user()->id;
-        $followers = Follow::where('follower_id', $userId)
-            ->with(['follower'])
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->map(function ($follow) {
-                $follow->is_follow = false; // Add is_follow to each item
-                return $follow;
-            });
-        return $this->success($followers, 'Data Fetch Successfully!', 200);
-    }
 
-    public function following()
-    {
-        $userId = auth()->user()->id;
+    private $follow;
 
-        // Get the list of users the authenticated user is following
-        $followers = Follow::where('user_id', $userId)
-            ->with(['follower']) // eager load the follower relationship
-            ->orderBy('created_at', 'DESC')
-            ->get()
-            ->map(function ($follow) {
-                $follow->is_follow = true; // Add is_follow to each item
-                return $follow;
-            });
-
-        return $this->success($followers, 'Data Fetch Successfully!', 200);
+    public function __construct(Follow $follow) {
+        $this->follow = $follow;
     }
 
     public function store(Request $request)
@@ -65,7 +43,7 @@ class FollowController extends Controller
         if ($user_id === (int) $follower_id) {
             return $this->error([], 'You cannot follow yourself.', 422);
         }
-        $existingFollow = Follow::where('user_id', $user_id)
+        $existingFollow = $this->follow->where('user_id', $user_id)
             ->where('follower_id', $follower_id)
             ->first();
 
@@ -75,14 +53,101 @@ class FollowController extends Controller
             return $this->success($existingFollow, 'Unfollowed the user', 200);
         }
 
-        $follow = Follow::create([
+        $follow = $this->follow->create([
             'user_id' => $user_id,
-            'follower_id' => $follower_id
+            'follower_id' => $follower_id,
         ]);
         $follow->is_follow = true;
 
         return $this->success($follow, 'You are now following this user', 200);
     }
+
+    public function findfriends(Request $request)
+    {
+        $userId = auth()->id();
+
+        // Validate the 'type' parameter
+        $request->validate([
+            'type' => ['required', Rule::in(['following', 'pending', 'potential'])],
+        ]);
+
+        $type = $request->input('type');
+
+        // Get IDs of users liked by the current user
+        $likedUserIds = DB::table('likes')
+            ->where('user_id', $userId)
+            ->where('likeable_type', User::class)
+            ->pluck('likeable_id');
+
+        // Helper to add 'is_like' flag to users collection
+        $addIsLikeFlag = function ($users) use ($likedUserIds) {
+            return $users->map(function ($user) use ($likedUserIds) {
+                $user->is_like = $likedUserIds->contains($user->id);
+                return $user;
+            });
+        };
+
+        switch ($type) {
+            case 'following':
+                $userIds = DB::table('follows')
+                    ->where('follower_id', $userId)
+                    ->where('status', 'success')
+                    ->pluck('user_id');
+
+                $users = User::whereIn('id', $userIds)
+                    ->select('id', 'name', 'avatar')
+                    ->get();
+
+                return $this->success($addIsLikeFlag($users), 'Following users fetched', 200);
+
+            case 'pending':
+                $userIds = DB::table('follows')
+                    ->where('follower_id', $userId)
+                    ->where('status', 'pending')
+                    ->pluck('user_id');
+
+                $users = User::whereIn('id', $userIds)
+                    ->select('id', 'name', 'avatar')
+                    ->get();
+
+                return $this->success($addIsLikeFlag($users), 'Pending friend requests fetched', 200);
+
+            case 'potential':
+                $following = DB::table('follows')
+                    ->where('follower_id', $userId)
+                    ->pluck('user_id');
+
+                $pending = DB::table('follows')
+                    ->where('follower_id', $userId)
+                    ->where('status', 'pending')
+                    ->pluck('user_id');
+
+                $followers = DB::table('follows')
+                    ->where('user_id', $userId)
+                    ->pluck('follower_id');
+
+                $connectedUsers = $following->merge($pending)->merge($followers)->unique();
+
+                $users = User::where('id', '!=', $userId)
+                    ->whereNotIn('id', $connectedUsers)
+                    ->select('id', 'name', 'avatar')
+                    ->latest()
+                    ->get();
+
+                return $this->success($addIsLikeFlag($users), 'Potential friends fetched', 200);
+        }
+    }
+
+    public function accept(Request $request)
+    {
+        // Validate the 'type' parameter
+        $request->validate([
+            'id' => ['required','exists:follows,id'],
+        ]);
+
+        $checj
+    }
+
 
     public function whoToFollow(Request $request)
     {
