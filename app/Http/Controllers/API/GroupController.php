@@ -199,7 +199,7 @@ class GroupController extends Controller
 
             if ($existingRequest) {
                 $existingRequest->delete();
-                return $this->error([], 'Removed existing request.', 409);
+                return $this->success([], 'Removed existing request.', 200);
             }
 
             $newRequest = GroupRequest::create([
@@ -338,13 +338,14 @@ class GroupController extends Controller
         $conversation = Conversation::with(['group.cover'])->find($id);
 
         if (!$conversation || !$conversation->group) {
-            return $this->error('Group not found', 404);
+            return $this->error([],'Group not found', 404);
         }
 
         $group = $conversation->group;
 
         $data = [
             'conversation_id' => $conversation->id,
+            'description' => $group->description,
             'name' => $group->name,
             'type' => $group->type,
             'cover_url' => $group->cover ? $group->cover->url : null,
