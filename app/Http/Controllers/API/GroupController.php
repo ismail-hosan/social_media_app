@@ -38,7 +38,7 @@ class GroupController extends Controller
             'conversation.participants' => function ($q) use ($userId) {
                 $q->where('participantable_id', $userId);
             }
-        ])->select('id', 'conversation_id', 'name','avatar_url', 'description', 'type','created_at');
+        ])->select('id', 'conversation_id', 'name', 'avatar_url', 'description', 'type', 'created_at');
 
         // 1. If searching by keyword
         if (!empty($search)) {
@@ -76,7 +76,7 @@ class GroupController extends Controller
                 'conversation_id' => $group->conversation_id,
                 'description' => $group->description,
                 'name' => $group->name,
-                'avatar_url' => $group->avatar_url ??null,
+                'avatar_url' => $group->avatar_url ?? null,
                 'participants_count' => $group->conversation?->participants->count() ?? 0,
                 'status' => $status,
                 'type' => $group->type,
@@ -338,7 +338,7 @@ class GroupController extends Controller
         $conversation = Conversation::with(['group.cover'])->find($id);
 
         if (!$conversation || !$conversation->group) {
-            return $this->error([],'Group not found', 404);
+            return $this->error([], 'Group not found', 404);
         }
 
         $group = $conversation->group;
@@ -409,30 +409,30 @@ class GroupController extends Controller
         // Step 1: Validate input
         $validation = Validator::make($request->all(), [
             'conversation_id' => 'required|integer|exists:wire_conversations,id',
-            'user_id' => 'nullable|integer|exists:users,id' // Optional: only for admin/owner
+            'user_id' => 'nullable|integer|exists:users,id', // Optional for admin/owner
         ]);
 
         if ($validation->fails()) {
             return $this->error([], $validation->errors(), 422);
         }
 
-        // Step 2: Retrieve the conversation safely
-        $conversation = Conversation::find($request->conversation_id);
+        // Step 2: Retrieve the conversation
+        $conversation = Conversation::find($request->conversation_id); // Use correct model
         if (!$conversation) {
             return $this->error([], 'Conversation not found.', 404);
         }
 
         $currentUser = auth()->user();
 
-        // Step 3: If trying to remove another user
+        // Step 3: Attempt to remove another user
         if ($request->filled('user_id') && $request->user_id != $currentUser->id) {
             $targetUser = User::find($request->user_id);
             if (!$targetUser) {
                 return $this->error([], 'Target user not found.', 404);
             }
 
-            // Only admin or owner can remove another user
-            if (!($conversation->isAdmin($currentUser) || $conversation->isOwner($currentUser))) {
+            // Only owner or admin can remove another user
+            if (!($conversation->isOwner($currentUser) || $conversation->isAdmin($currentUser))) {
                 return $this->error([], 'You are not authorized to remove users from this conversation.', 403);
             }
 
