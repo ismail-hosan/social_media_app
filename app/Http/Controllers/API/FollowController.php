@@ -18,7 +18,8 @@ class FollowController extends Controller
 
     private $follow;
 
-    public function __construct(Follow $follow) {
+    public function __construct(Follow $follow)
+    {
         $this->follow = $follow;
     }
 
@@ -140,13 +141,31 @@ class FollowController extends Controller
 
     public function accept(Request $request)
     {
-        // Validate the 'type' parameter
         $request->validate([
-            'id' => ['required','exists:follows,id'],
+            'id' => ['required', 'exists:follows,id'],
         ]);
 
-        $checj
+        $followRequest = $this->follow->find($request->id);
+
+        if ($followRequest->follower_id != auth()->id()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized to accept this request'
+            ], 403);
+        }
+
+        // Mark as accepted (you'll need a column like 'status' => 'pending' | 'accepted')
+        $followRequest->status = 'accepted';
+        $followRequest->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Follow request accepted',
+            'data' => $followRequest
+        ], 200);
     }
+
+    public function search(Request $request) {}
 
 
     public function whoToFollow(Request $request)

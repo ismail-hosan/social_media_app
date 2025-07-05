@@ -7,7 +7,9 @@ use App\Http\Controllers\Controller;
 use App\Models\GroupRequest;
 use App\Models\User;
 use App\Traits\apiresponse;
+use Aws\Endpoint\Partition;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Namu\WireChat\Enums\ConversationType;
 use Namu\WireChat\Enums\GroupType;
 use Namu\WireChat\Enums\ParticipantRole;
@@ -18,6 +20,8 @@ use Namu\WireChat\Models\Participant;
 use PhpParser\Node\Expr\FuncCall;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Namu\WireChat\Facades\WireChat;
 
 class GroupController extends Controller
 {
@@ -34,7 +38,7 @@ class GroupController extends Controller
             'conversation.participants' => function ($q) use ($userId) {
                 $q->where('participantable_id', $userId);
             }
-        ])->select('id', 'conversation_id', 'name', 'type', 'created_at');
+        ])->select('id', 'conversation_id', 'name','avatar_url', 'description', 'type','created_at');
 
         // 1. If searching by keyword
         if (!empty($search)) {
@@ -67,11 +71,12 @@ class GroupController extends Controller
             $hasRequested = in_array($group->conversation_id, $groupRequests);
 
             $status = $isParticipant ? 'joined' : ($hasRequested ? 'requested' : 'join');
-
+            // dd($group);
             return [
                 'conversation_id' => $group->conversation_id,
+                'description' => $group->description,
                 'name' => $group->name,
-                'cover_url' => optional($group->cover)->url,
+                'avatar_url' => $group->avatar_url ??null,
                 'participants_count' => $group->conversation?->participants->count() ?? 0,
                 'status' => $status,
                 'type' => $group->type,
@@ -81,9 +86,6 @@ class GroupController extends Controller
 
         return $this->success($results, 'Data fetched successfully!', 200);
     }
-
-
-
 
     public function addGroupMember(Request $request)
     {
@@ -216,6 +218,42 @@ class GroupController extends Controller
         }
     }
 
+    public function removeRequest(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'conversation_id' => 'required|exists:wire_conversations,id',
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        if ($validation->fails()) {
+            return $this->error([], $validation->errors(), 422);
+        }
+
+        $authUserId = auth()->user()->id;
+
+        // Check if current user is an admin or owner in the conversation
+        $isParticipant = Participant::where('participantable_id', $authUserId)
+            ->where('conversation_id', $request->conversation_id)
+            ->whereIn('role', ['owner', 'admin'])
+            ->exists();
+        if (!$isParticipant) {
+            return $this->error([], 'You are not authorized to remove requests from this conversation.', 403);
+        }
+
+        // Proceed to delete the request
+        $deleted = DB::table('group_requests')
+            ->where('conversation_id', $request->conversation_id)
+            ->where('user_id', $request->user_id)
+            ->delete();
+
+        if ($deleted) {
+            return $this->success([], 'Request deleted successfully.');
+        } else {
+            return $this->error([], 'No matching request found.', 404);
+        }
+    }
+
+
     public function get()
     {
         $authUserId = auth()->id();
@@ -332,23 +370,153 @@ class GroupController extends Controller
         }
 
         $type = $request->input('type');
+        $authUserId = auth()->id();
+
+        // Find authenticated user's participant record
+        $authParticipant = $conversation->participants->firstWhere('participantable_id', $authUserId);
+
+        // Check if authenticated user has admin or owner role
+        $canRemove = false;
+        if ($authParticipant && in_array($authParticipant->role ?? '', [ParticipantRole::ADMIN, ParticipantRole::OWNER])) {
+            $canRemove = true;
+        }
 
         $members = $conversation->participants->filter(function ($participant) use ($type) {
             if ($type === 'admin') {
-                // Only include users with role 'admin' or 'owner'
-                return in_array($participant->role ?? '', ['admin', 'owner']);
+                return in_array($participant->role ?? '', [ParticipantRole::ADMIN, ParticipantRole::OWNER]);
             }
-            // Include all participants
             return true;
-        })->map(function ($participant) {
+        })->map(function ($participant) use ($canRemove) {
             $user = $participant->participantable;
             return [
+                'id' => $user->id,
                 'name' => $user->name,
                 'avatar' => $user->avatar ?? null,
                 'role' => $user->role ?? null,
+                'remove' => $canRemove // This controls the remove button per member
             ];
-        })->values(); // reset keys
+        })->values();
 
-        return $this->success($members, 'Members fetched successfully', 200);
+        return $this->success([
+            'members' => $members
+        ], 'Members fetched successfully', 200);
+    }
+
+
+    public function leave(Request $request)
+    {
+        // Step 1: Validate input
+        $validation = Validator::make($request->all(), [
+            'conversation_id' => 'required|integer|exists:wire_conversations,id',
+            'user_id' => 'nullable|integer|exists:users,id' // Optional: only for admin/owner
+        ]);
+
+        if ($validation->fails()) {
+            return $this->error([], $validation->errors(), 422);
+        }
+
+        // Step 2: Retrieve the conversation safely
+        $conversation = Conversation::find($request->conversation_id);
+        if (!$conversation) {
+            return $this->error([], 'Conversation not found.', 404);
+        }
+
+        $currentUser = auth()->user();
+
+        // Step 3: If trying to remove another user
+        if ($request->filled('user_id') && $request->user_id != $currentUser->id) {
+            $targetUser = User::find($request->user_id);
+            if (!$targetUser) {
+                return $this->error([], 'Target user not found.', 404);
+            }
+
+            // Only admin or owner can remove another user
+            if (!($conversation->isAdmin($currentUser) || $conversation->isOwner($currentUser))) {
+                return $this->error([], 'You are not authorized to remove users from this conversation.', 403);
+            }
+
+            $result = $targetUser->exitConversation($conversation);
+
+            if (!$result) {
+                return $this->error([], 'The user is not a participant in this conversation.', 400);
+            }
+
+            return $this->success([], 'User removed from conversation.', 200);
+        }
+
+        // Step 4: Self-leave
+        $result = $currentUser->exitConversation($conversation);
+
+        if (!$result) {
+            return $this->error([], 'You are not a participant in this conversation.', 400);
+        }
+
+        return $this->success([], 'Successfully left the conversation.', 200);
+    }
+
+    public function updateInfo(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'name' => 'sometimes|nullable|string|max:255',
+            'conversation_id' => 'required|integer|exists:wire_conversations,id',
+            'type' => 'sometimes|nullable|in:private,public',
+            'image' => 'sometimes|nullable|image|max:2048',
+        ]);
+
+        if ($validation->fails()) {
+            return $this->error([], $validation->errors(), 422);
+        }
+
+        $conversation = Conversation::findOrFail($request->conversation_id);
+        $user = auth()->user();
+
+        if (!($conversation->isAdmin($user) || $conversation->isOwner($user))) {
+            return $this->error([], 'You are not authorized to change information from this conversation.', 403);
+        }
+
+        $group = $conversation->group;
+        $data = [];
+
+        if ($request->filled('name')) {
+            $data['name'] = $request->name;
+        }
+
+        if ($request->filled('type')) {
+            $data['type'] = $request->type;
+        }
+
+        if ($request->hasFile('image')) {
+            // Delete old image if exists
+            if ($group && $group->avatar_url && Storage::disk(WireChat::storageDisk())->exists($group->avatar_url)) {
+                Storage::disk(WireChat::storageDisk())->delete($group->avatar_url);
+            }
+
+            // Store new image
+            $imagePath = $request->file('image')->store(WireChat::storageFolder(), WireChat::storageDisk());
+            $data['avatar_url'] = $imagePath;
+        }
+
+        // Update group
+        $group->update($data);
+
+        return $this->success($conversation->fresh(), 'Conversation updated successfully');
+    }
+
+    public function generateLink(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'conversation_id' => 'required|exists:wire_conversations,id',
+        ]);
+
+        if ($validation->fails()) {
+            return $this->error([], $validation->errors(), 422);
+        }
+        // Encrypt the conversation ID
+        $encryptedId = Crypt::encryptString($request->conversation_id);
+
+        // Generate full URL for API access
+        $link = url('/chat/link/conversation/' . urlencode($encryptedId));
+
+        return $this->success(['link' => $link], 'Link create successfully', 200);
     }
 }

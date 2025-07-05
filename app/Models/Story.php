@@ -11,7 +11,7 @@ class Story extends Model
 
     public function getFileUrlAttribute($value)
     {
-        return $value ? Storage::disk('s3')->temporaryUrl($value, now()->addMinutes(30)) : null;
+        return $value ? asset($value) : null;
     }
 
     public function getSlugAttribute($value)

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Traits\apiresponse;
 use App\Traits\bloackeduser;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -58,14 +59,15 @@ class ChatController extends Controller
                 'group.cover',
                 'lastMessage'
             ])
-            ->select('wire_conversations.id', 'wire_conversations.type') 
+            ->select('wire_conversations.id', 'wire_conversations.type')
             ->orderByDesc(\DB::raw('(SELECT created_at FROM wire_messages WHERE wire_messages.conversation_id = wire_conversations.id ORDER BY created_at DESC LIMIT 1)'))
             ->get();
+
+
 
         // Transform the conversations for frontend consumption
         $conversations->transform(function ($conversation) use ($request) {
             $authParticipant = $conversation->authParticipant ?? auth()->user();
-
             $isReadByAuth = $conversation->readBy($authParticipant)
                 || $conversation->id == $request->input('selectedConversationId');
 
@@ -83,13 +85,12 @@ class ChatController extends Controller
 
             return $conversation;
         });
+        // dd($conversations->last());
 
         return $this->success([
             'conversations' => $conversations,
         ], "Conversations fetched successfully", 200);
     }
-
-
 
     public function sendMessage(Request $request)
     {
@@ -141,8 +142,22 @@ class ChatController extends Controller
         }
     }
 
+    public function linkConversation($encryptedId)
+    {
+        $conversationId = Crypt::decryptString($encryptedId);
+        $data = $this->getConversation($conversationId);
+
+        return $this->success($data, 'Data Fetch Successfully', 200);
+    }
 
     public function getUserConversation($id)
+    {
+        $data = $this->getConversation($id);
+
+        return $this->success($data, 'Data Fetch Successfully', 200);
+    }
+
+    private function getConversation($id)
     {
         $user = auth()->user();
 
@@ -202,14 +217,13 @@ class ChatController extends Controller
             ];
         }
 
-        return $this->success([
+        return [
             'my_id' => $user->id,
             'conversation_id' => $conversation->id,
             'top_info' => $topInfo,
             'messages' => $messages,
-        ], "Conversation fetched successfully", 200);
+        ];
     }
-
 
     public function createCovesation(Request $request)
     {
@@ -266,7 +280,6 @@ class ChatController extends Controller
         return $this->success($block, 'User blocked successfully.', 200);
     }
 
-
     public function messageReact(Request $request)
     {
         $validation = Validator::make($request->all(), [
@@ -293,8 +306,6 @@ class ChatController extends Controller
         return $this->success($reaction, 'Reaction recorded.', 200);
     }
 
-
-
     public function searchUsers(Request $request)
     {
         // Validate the request to ensure 'query' exists
@@ -315,5 +326,22 @@ class ChatController extends Controller
         return $this->success([
             'users' => $users->select('id', 'name', 'avatar'),
         ], "Users fetched successfully", 200);
+    }
+
+    public function removeCovesation(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'conversation_id' => 'required|exists:wire_conversations,id',
+        ]);
+
+        if ($validation->fails()) {
+            return $this->error([], $validation->errors(), 422);
+        }
+
+        $auth = auth()->user();
+        $conversation = $auth->conversations()->find($request->conversation_id);
+        $conversation->deleteFor($auth);
+
+        return $this->success([], 'Delete Conversation successfully');
     }
 }

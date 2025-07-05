@@ -106,10 +106,11 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
     // All Followers
     Route::controller(FollowController::class)->prefix('follow')->group(function () {
         Route::post('store', 'store');
+        Route::get('search', 'search');
         // Route::get('how', 'whoToFollow');
         Route::get('post', 'whoToFollow');
         Route::get('get', 'index');
-        Route::get('accept', 'accept');
+        Route::post('accept', 'accept');
         Route::get('findfriends', 'findfriends');
     });
 
@@ -153,7 +154,6 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
 
     // All Chat route
     Route::controller(ChatController::class)->group(function () {
-
         Route::post('/chat/message', 'sendMessage');
         Route::get('/chat/get/messages', 'getConversations');
         Route::get('/chat/get', 'getConversations');
@@ -162,6 +162,8 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::post('/chat/create/covesation', 'createCovesation');
         Route::post('/chat/block', 'covesationBlock');
         Route::post('/chat/message/react', 'messageReact');
+        Route::get('/chat/link/conversation/{encryptedId}', 'linkConversation');
+        Route::post('/chat/conversation/delete', 'removeCovesation');
     });
 
     Route::controller(GroupController::class)->prefix('group')->group(function () {
@@ -169,10 +171,14 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::post('/memberadd', 'addGroupMember');
         Route::post('/groupmessage', 'groupMessage');
         Route::post('/request', 'sendRequest');
+        Route::post('/request/remove', 'removeRequest');
         Route::get('/get', 'get');
         Route::post('/chat/group/create', 'groupCreate');
         Route::get('/info/{id}', 'info');
         Route::post('/member', 'member');
+        Route::post('/leave', 'leave');
+        Route::post('/update/information', 'updateInfo');
+        Route::post('/linkgenerate', 'generateLink');
     });
 
     // All Filter 

@@ -70,8 +70,6 @@ class StoryController extends Controller
 
 
 
-
-
     public function showBySlug($slug)
     {
         $story = Story::where('slug', $slug)->with('user')->first();
@@ -96,8 +94,8 @@ class StoryController extends Controller
 
         $user = auth()->user();
 
-        if ($request->media) {
-            $media = Helper::s3upload('story', $request->media);
+        if ($request->hasFile('media')) {
+            $media = Helper::uploadImage($request->media, 'story');
         }
         $slug = Str::slug($user->name . '-' . time());
         $story = Story::create([
