@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\backend;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Namu\WireChat\Models\Conversation;
 
@@ -17,16 +18,31 @@ class DashboardController extends Controller
      */
     public function index()
     {
-        $user = User::all();
-        $total_user = $user->count();
-        $active_user = $user->where('status', 'active')->count();
-        $inactive_user = $user->where('status', 'inactive')->count();
-        $verify_user = $user->whereNotNull('base')->count();
+        // User stats using DB queries (not collection)
+        $total_user = User::count();
+        $active_user = User::where('status', 'active')->count();
+        $inactive_user = User::where('status', 'inactive')->count();
+        $verify_user = User::whereNotNull('base')->count();
 
-        $post = Post::all();
-        $total_post = $post->count();
+        // Post stats
+        $total_post = Post::count();
+        $today_post = Post::whereDate('created_at', Carbon::today())->count();
 
-        $channel = Conversation::where('type','group')->count();
-        return view('backend.dashboard', get_defined_vars());
+        // Channel stats (group conversations)
+        $channelQuery = Conversation::where('type', 'group');
+        $total_channel = (clone $channelQuery)->count();
+        $channel_today = (clone $channelQuery)->whereDate('created_at', Carbon::today())->count();
+
+        // Return data to the view
+        return view('backend.dashboard', compact(
+            'total_user',
+            'active_user',
+            'inactive_user',
+            'verify_user',
+            'total_post',
+            'today_post',
+            'total_channel',
+            'channel_today'
+        ));
     }
 }

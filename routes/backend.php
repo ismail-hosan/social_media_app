@@ -3,7 +3,7 @@
 use App\Http\Controllers\Web\backend\admin\FAQController;
 use App\Http\Controllers\Web\backend\CategoryController;
 use App\Http\Controllers\Web\backend\DashboardController;
-use App\Http\Controllers\web\backend\GroupController;
+use App\Http\Controllers\Web\backend\GroupController;
 use App\Http\Controllers\Web\backend\HobbyController;
 use App\Http\Controllers\Web\backend\PostController;
 use App\Http\Controllers\Web\backend\PremissionController;

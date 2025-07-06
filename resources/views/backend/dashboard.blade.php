@@ -101,15 +101,32 @@
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
                                         <div class="flex-shrink-0 avatar">
-                                            <img src="{{ asset('backend/app-assets/images/channel.png') }}" alt="Credit Card"
+                                            <img src="{{ asset('backend/app-assets/images/post.png') }}" alt="Credit Card"
                                                 height="90px" width="90px" class="" />
+                                        </div>
+
+                                    </div>
+                                    <span class="mb-1 fw-semibold d-block">
+                                        Today Created Post
+                                    </span>
+                                    <h3 class="mb-2 card-title">{{ $today_post ?? 0 }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="card-title d-flex align-items-start justify-content-between">
+                                        <div class="flex-shrink-0 avatar">
+                                            <img src="{{ asset('backend/app-assets/images/channel.png') }}"
+                                                alt="Credit Card" height="90px" width="90px" class="" />
                                         </div>
 
                                     </div>
                                     <span class="mb-1 fw-semibold d-block">
                                         Total Channel
                                     </span>
-                                    <h3 class="mb-2 card-title">{{ $channel ?? 0 }}</h3>
+                                    <h3 class="mb-2 card-title">{{ $total_channel ?? 0 }}</h3>
                                 </div>
                             </div>
                         </div>
@@ -118,33 +135,15 @@
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
                                         <div class="flex-shrink-0 avatar">
-                                            <img src="{{ asset('backend/app-assets/images/post.png') }}" alt="Credit Card"
+                                            <img src="{{ asset('backend/app-assets/images/channel.png') }}" alt="Credit Card"
                                                 height="90px" width="90px" class="" />
                                         </div>
 
                                     </div>
                                     <span class="mb-1 fw-semibold d-block">
-                                        Total Longs Video
+                                        Today Created Channel
                                     </span>
-                                    <h3 class="mb-2 card-title">{{ $total_longs ?? 0 }}</h3>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="card-title d-flex align-items-start justify-content-between">
-                                        <div class="flex-shrink-0 avatar">
-                                            <img src="{{ asset('backend/app-assets/images/post.png') }}" alt="Credit Card"
-                                                height="90px" width="90px" class="" />
-                                        </div>
-
-                                    </div>
-                                    <span class="mb-1 fw-semibold d-block">
-                                        Videos View
-                                    </span>
-                                    <h3 class="mb-2 card-title">{{ $total_video_view ?? 0 }}</h3>
+                                    <h3 class="mb-2 card-title">{{ $channelToday ?? 0 }}</h3>
                                 </div>
                             </div>
                         </div>
