@@ -142,7 +142,7 @@ class FollowController extends Controller
     public function accept(Request $request)
     {
         $request->validate([
-            'id' => ['required', 'exists:follows,id'],
+            'follower_id' => ['required', 'exists:follows,id'],
         ]);
 
         $followRequest = $this->follow->find($request->id);
@@ -168,61 +168,48 @@ class FollowController extends Controller
     public function search(Request $request) {}
 
 
-    public function whoToFollow(Request $request)
+    public function followersPosts(Request $request)
     {
         $userId = auth()->id();
 
-        $followingIds = Follow::where('user_id', $userId)
-            ->pluck('follower_id')
-            ->toArray();
         // Get IDs of users the authenticated user is following
+        $followingIds = Follow::where('user_id', $userId)
+            ->pluck('follower_id') // Make sure this is the correct column
+            ->toArray();
 
-        // Get suggested users to follow (excluding already followed users and self)
-        $usersToFollow = User::whereNotIn('id', $followingIds)
-            ->inRandomOrder()
-            ->where('is_admin', false)
-            ->take(5)
-            ->get();
-        $usersToFollow->transform(function ($user) use ($followingIds) {
-            $user->is_follow = in_array($user->id, $followingIds);
-            return $user;
-        });
-
-        // Get posts only from followed users and self
+        // Fetch posts from followed users
         $posts = Post::whereIn('user_id', $followingIds)
-            ->where('user_id', '!=', $userId)
-            ->with(['user', 'tags', 'images'])
-            ->withCount(['likes', 'comments', 'repost'])
-            ->with(['bookmarks' => function ($q) use ($userId) {
-                $q->where('user_id', $userId);
+            ->with(['user:id,name,avatar,base,created_at'])
+            ->withCount(['likes', 'comments'])
+            ->with(['bookmarks' => function ($query) use ($userId) {
+                $query->where('user_id', $userId);
             }])
             ->latest()
             ->paginate(5);
-
-        // Add bookmark and interaction statuses
+        // Transform each post
         $posts->getCollection()->transform(function ($post) {
+            if ($post->user) {
+                $post->user->join_date = $post->user->created_at
+                    ? $post->user->created_at->format('d M Y')
+                    : null;
+                // dd($post->user->join_date);
+                // If post is marked as unknown, hide name and avatar
+                if ($post->unknown === 1) {
+                    $post->user->name = null;
+                    $post->user->avatar = null;
+                }
+            }
+
             $post->is_bookmarked = $post->bookmarks->isNotEmpty();
-            $post->is_repost = $post->repost->isNotEmpty();
-            $post->is_likes = $post->likes->isNotEmpty();
-            unset($post->repost);
-            unset($post->bookmarks);
-            unset($post->likes);
+            $post->is_likes = $post->likes_count > 0;
+
+            unset($post->bookmarks, $post->likes_count);
+
             return $post;
         });
 
-        // Suggested users block
-        $suggestedUsersItem = (object)[
-            'type' => 'suggested_users',
-            'users' => $usersToFollow,
-        ];
-
-        // Append suggested users item to posts
-        $posts->setCollection(
-            $posts->getCollection()->push($suggestedUsersItem)
-        );
-
         return $this->success([
             'posts' => $posts,
-        ], 'Data fetched successfully!', 200);
+        ], 'Posts from followed users fetched successfully!', 200);
     }
 }

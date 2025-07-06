@@ -40,7 +40,7 @@ class PostController extends Controller
 
         $query = $this->posts
             ->where('user_id', $user_id)
-            ->with(['user:id,name,avatar', 'tags'])
+            ->with(['user:id,name,avatar,base'])
             ->withCount(['likes', 'comments'])
             ->with(['bookmarks' => function ($q) use ($user_id) {
                 $q->where('user_id', $user_id);
@@ -69,7 +69,7 @@ class PostController extends Controller
                 unset($post->user);
                 $post->user = (object) [
                     'name' => 'Unknown',
-                    'avatar' => null
+                    'avatar' => null,
                 ];
             }
 
@@ -89,7 +89,7 @@ class PostController extends Controller
             'title' => 'required|string',
             'description' => 'required|string',
             'tag' => 'nullable|array',
-            'unknown' => 'required|boolean',
+            'unknown' => 'required|in:true,false',
             'image' => 'nullable|image',
         ]);
 
@@ -111,13 +111,15 @@ class PostController extends Controller
                 $image_url = Helper::uploadImage($request->image, 'post');
             }
 
+            $unknownValue = $request->input('unknown') === 'true' ? 1 : 0;
+
             // Create the post
             $post = $this->posts->create([
                 'user_id' => $user->id,
                 'title' => $request->title,
                 'description' => $request->description,
                 'file_url' => $image_url,
-                'unknown' => $request->unknown,
+                'unknown' => $unknownValue,
             ]);
 
             // Store tags from the "tag" array (not from description hashtags)

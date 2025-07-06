@@ -11,6 +11,8 @@ class Post extends Model
 
     protected $appends = ['is_me'];
 
+    protected $hidden = ['unknown'];
+
     public function getIsMeAttribute()
     {
         // Compare the post's user_id with the authenticated user's ID

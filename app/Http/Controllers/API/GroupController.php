@@ -348,7 +348,7 @@ class GroupController extends Controller
             'description' => $group->description,
             'name' => $group->name,
             'type' => $group->type,
-            'cover_url' => $group->cover ? $group->cover->url : null,
+            'avatar_url' => $group->avatar_url ?? null,
         ];
 
         return $this->success($data, 'Data Fetch Successfully', 200);

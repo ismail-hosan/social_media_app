@@ -108,7 +108,7 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::post('store', 'store');
         Route::get('search', 'search');
         // Route::get('how', 'whoToFollow');
-        Route::get('post', 'whoToFollow');
+        Route::get('followersPosts', 'followersPosts');
         Route::get('get', 'index');
         Route::post('accept', 'accept');
         Route::get('findfriends', 'findfriends');
