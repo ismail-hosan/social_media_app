@@ -37,11 +37,8 @@ class UserController extends Controller
     {
 
         $validator = Validator::make($request->all(), [
-            'role' => 'required',
             'name' => 'required|string|max:255',
             'phone' => 'required',
-            'birth_day' => 'required',
-            'username' => 'required|string|unique:users,username|max:255',
             'email' => 'required|email|unique:users,email|max:255',
             'password' => 'required|string|confirmed|min:8',
         ]);
@@ -52,18 +49,13 @@ class UserController extends Controller
         $data = $request->all();
         // Create a new user instance
         $user = new User();
-        if ($request->role == 'admin') {
-            $user->is_admin = true;
-        } else {
-            $user->is_admin = false;
-        }
         $user->name = $data['name'];
         $user->phone = $data['phone'];
-        $user->birthday = $data['birth_day'];
-        $user->username = $data['username'];
+        $user->username = Helper::generateUniqueUsername($data['name']);
         $user->email = $data['email'];
+        // $user->opt = null;
         $user->email_verified_at = now();
-        $user->password = Hash::make($data['password']); // Make sure password is hashed
+        $user->password = Hash::make($data['password']);
 
         $user->save();
 

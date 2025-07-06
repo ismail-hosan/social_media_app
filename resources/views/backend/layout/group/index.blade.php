@@ -2,12 +2,12 @@
 @push('style')
     <link rel="stylesheet" href="{{ asset('backend/assets/datatable/css/datatables.min.css') }}">
 @endpush
-@section('title', 'Dynamic Page List')
+@section('title', 'Channel Page List')
 @section('content')
     <div class="app-content content ">
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Post Page List</h3>
+                <h3 class="card-title">Channel List</h3>
                 <div>
                     <button type='button' style='min-width: 115px;' class='btn btn-danger delete_btn d-none'
                         onclick='multi_delete()'>Bulk Delete</button>
@@ -28,11 +28,11 @@
                                         <label class="form-check-label" for="select_all"></label>
                                     </div>
                                 </th>
-                                <th>User Name</th>
-                                <th>Title</th>
+                                <th>Name</th>
                                 <th>Description</th>
                                 <th>Image</th>
-                                <th>Status</th>
+                                <th>Participants</th>
+                                <th>Type</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -56,7 +56,7 @@
                         processing: true,
                         serverSide: true,
                         responsive: true,
-                        ajax: "{{ route('post.index') }}",
+                        ajax: "{{ route('group.index') }}",
                         order: [],
                         lengthMenu: [
                             [25, 50, 100, -1],
@@ -76,24 +76,29 @@
                                 searchable: false
                             },
                             {
-                                data: 'username',
+                                data: 'name',
                                 orderable: true,
                                 searchable: true
                             },
                             {
-                                data: 'title',
+                                data: 'description',
                                 orderable: true,
                                 searchable: true
                             },
                             {
-                                data: 'description'
+                                data: 'image',
+                                orderable: false,
+                                searchable: false
                             },
                             {
-                                data: 'image'
+                                data: 'participants',
+                                orderable: false,
+                                searchable: false
                             },
-
                             {
-                                data: 'status'
+                                data: 'type',
+                                orderable: true,
+                                searchable: true
                             },
                             {
                                 data: 'action',
@@ -122,10 +127,10 @@
             }
 
             function deleteFinal(id) {
-                let deleteUrl = '{{ route('post.destroy', ':id') }}'.replace(':id', id);
+                let deleteUrl = '{{ route('group.destroy', ':id') }}'.replace(':id', id);
 
                 fetch(deleteUrl, {
-                        method: 'DELETE', // <- use DELETE
+                        method: 'DELETE', 
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                             'Accept': 'application/json', // <- force JSON response

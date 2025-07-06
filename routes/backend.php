@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\backend\admin\FAQController;
 use App\Http\Controllers\Web\backend\CategoryController;
 use App\Http\Controllers\Web\backend\DashboardController;
+use App\Http\Controllers\web\backend\GroupController;
 use App\Http\Controllers\Web\backend\HobbyController;
 use App\Http\Controllers\Web\backend\PostController;
 use App\Http\Controllers\Web\backend\PremissionController;
@@ -41,6 +42,7 @@ Route::controller(ProfileSettingController::class)->group(function () {
     Route::post('/profile/update/password', 'updatePassword')->name('profile.update.password');
     Route::post('/profile/update/profile-picture', 'updateProfilePicture')->name('profile.update.profile.picture');
     Route::get('/checkusername', 'checkusername')->name('checkusername');
+    Route::post('/profile/edit', 'edit')->name('profile.edit');
 });
 
 // FAQ Route
@@ -93,8 +95,18 @@ Route::controller(DynamicPagesController::class)->group(function () {
 Route::controller(PostController::class)->group(function () {
     Route::get('/post', 'index')->name('post.index');
     Route::delete('/post/destroy/{id}', 'destroy')->name('post.destroy');
+    Route::get('/post/show/{id}', 'show')->name('post.show');
     Route::post('/post/status/{id}', 'changeStatus')->name('post.status');
     Route::post('/post/bulk-delete', 'bulkDelete')->name('post.bulk-delete');
+});
+
+//Group Pages Route
+Route::controller(GroupController::class)->group(function () {
+    Route::get('/group', 'index')->name('group.index');
+    Route::delete('/group/destroy/{id}', 'destroy')->name('group.destroy');
+    Route::get('/group/show/{id}', 'show')->name('group.show');
+    Route::post('/group/status/{id}', 'changeStatus')->name('group.status');
+    Route::post('/group/bulk-delete', 'bulkDelete')->name('group.bulk-delete');
 });
 
 Route::prefix('permissions')->controller(PremissionController::class)->group(function () {

@@ -16,5 +16,5 @@ jobs:
         with:
           server: ftp.softvencefsd.xyz
           username: saint@saint.softvencefsd.xyz
-          password: "h6@k+x*pbsQi.30_"
+          password: ${{ PASSWORD }}
 

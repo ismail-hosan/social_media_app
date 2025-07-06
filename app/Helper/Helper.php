@@ -14,7 +14,7 @@ use Kreait\Firebase\Messaging\Notification as FirebaseNotification;
 
 class Helper
 {
-    public static function s3upload($path,$imageFile)
+    public static function s3upload($path, $imageFile)
     {
         $uploadedUrl = Storage::disk('s3')->put($path, $imageFile);
         return $uploadedUrl;
@@ -80,5 +80,19 @@ class Helper
             // Log the error or handle it as needed
             return null;
         }
+    }
+
+    public static function generateUniqueUsername($name)
+    {
+        $base = strtolower(preg_replace('/\s+/', '', $name)); // remove spaces and lowercase
+        $username = $base;
+        $counter = 1;
+
+        while (User::where('username', $username)->exists()) {
+            $username = $base . $counter;
+            $counter++;
+        }
+
+        return $username;
     }
 }

@@ -88,9 +88,8 @@ class PostController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'required|string',
             'description' => 'required|string',
-            'tag' => 'nullable|array',
             'unknown' => 'required|in:true,false',
-            'image' => 'nullable|image',
+            'image' => 'required|image',
         ]);
 
         if ($validator->fails()) {
@@ -123,14 +122,14 @@ class PostController extends Controller
             ]);
 
             // Store tags from the "tag" array (not from description hashtags)
-            if ($request->has('tag')) {
-                foreach ($request->tag as $tagText) {
-                    Tag::create([
-                        'post_id' => $post->id,
-                        'text' => $tagText,
-                    ]);
-                }
-            }
+            // if ($request->has('tag')) {
+            //     foreach ($request->tag as $tagText) {
+            //         Tag::create([
+            //             'post_id' => $post->id,
+            //             'text' => $tagText,
+            //         ]);
+            //     }
+            // }
 
             // Handle mentions from the description
             preg_match_all('/@(\w+)/', $request->description, $mentionMatches);

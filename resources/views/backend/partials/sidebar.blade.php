@@ -56,11 +56,11 @@
                 </ul>
             </li>
 
-            <li class="nav-item {{ request()->routeIs('hobby.index') ? 'active' : '' }}">
-                <a class="d-flex align-items-center" href="{{ route('hobby.index') }}">
+            <li class="nav-item {{ request()->routeIs('group.*') ? 'active' : '' }}">
+                <a class="d-flex align-items-center" href="{{ route('group.index') }}">
                     <i data-feather="help-circle"></i>
                     <span class="menu-title text-truncate" data-i18n="ag-grid">
-                        Hobby Tags
+                        Channel List
                     </span>
                 </a>
             </li>

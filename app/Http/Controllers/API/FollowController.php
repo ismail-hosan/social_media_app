@@ -179,21 +179,22 @@ class FollowController extends Controller
 
         // Fetch posts from followed users
         $posts = Post::whereIn('user_id', $followingIds)
+            ->where('status', 'active')
             ->with(['user:id,name,avatar,base,created_at'])
             ->withCount(['likes', 'comments'])
             ->with(['bookmarks' => function ($query) use ($userId) {
                 $query->where('user_id', $userId);
             }])
             ->latest()
-            ->paginate(5);
+            ->paginate(5);   
         // Transform each post
         $posts->getCollection()->transform(function ($post) {
             if ($post->user) {
                 $post->user->join_date = $post->user->created_at
                     ? $post->user->created_at->format('d M Y')
                     : null;
-                // dd($post->user->join_date);
-                // If post is marked as unknown, hide name and avatar
+
+                // Hide name and avatar if post is marked as unknown
                 if ($post->unknown === 1) {
                     $post->user->name = null;
                     $post->user->avatar = null;
@@ -203,7 +204,8 @@ class FollowController extends Controller
             $post->is_bookmarked = $post->bookmarks->isNotEmpty();
             $post->is_likes = $post->likes_count > 0;
 
-            unset($post->bookmarks, $post->likes_count);
+            // Keep likes_count in response
+            unset($post->bookmarks); // Remove only bookmarks relationship
 
             return $post;
         });

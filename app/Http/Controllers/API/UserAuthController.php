@@ -56,7 +56,7 @@ class UserAuthController extends Controller
                 'country',
             ]);
 
-            $validated['username'] = $this->generateUniqueUsername($validated['name']);
+            $validated['username'] = Helper::generateUniqueUsername($validated['name']);
             $validated['password'] = bcrypt($validated['password']);
             $validated['otp'] = $this->generateOtp();
 
@@ -433,17 +433,5 @@ class UserAuthController extends Controller
         return Auth::guard();
     }
 
-    private function generateUniqueUsername($name)
-    {
-        $base = strtolower(preg_replace('/\s+/', '', $name)); // remove spaces and lowercase
-        $username = $base;
-        $counter = 1;
-
-        while (User::where('username', $username)->exists()) {
-            $username = $base . $counter;
-            $counter++;
-        }
-
-        return $username;
-    }
+   
 }

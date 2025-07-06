@@ -157,4 +157,9 @@ class ProfileSettingController extends Controller
         ]);
     }
 
+    public function edit()
+    {
+        
+    }
+
 }

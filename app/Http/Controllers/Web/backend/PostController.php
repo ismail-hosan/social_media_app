@@ -14,7 +14,7 @@ class PostController extends Controller
     {
 
         if ($request->ajax()) {
-            $data = Post::latest()->get();
+            $data = Post::latest();
 
             return DataTables::of($data)
                 ->addIndexColumn()
@@ -27,21 +27,17 @@ class PostController extends Controller
                                 <label class="form-check-label" for="checkbox-' . $data->id . '"></label>
                             </div>';
                 })
+                ->editColumn('username', function ($data) {
+                    return $data->user->username ?? '';
+                })
                 ->editColumn('image', function ($data) {
-                    $imagesHtml = '';
+                    $url = $data->file_url ?? null;
 
-                    if ($data->images && $data->images->isNotEmpty()) {
-                        $imagesHtml .= '<div style="display: flex; flex-wrap: wrap; gap: 5px;">';
-
-                        foreach ($data->images as $image) {
-                            $url = $image->file_url;
-                            $imagesHtml .= '<img src="' . $url . '" alt="Image" width="80" height="80" style="object-fit: cover;">';
-                        }
-
-                        $imagesHtml .= '</div>';
+                    if ($url) {
+                        return '<img src="' . $url . '" alt="Image" width="80" height="80" style="object-fit: cover;">';
                     }
 
-                    return $imagesHtml ?: 'No images';
+                    return 'No images';
                 })
                 ->editColumn('status', function ($data) {
                     return '<div class="form-check form-switch mb-2"><input type="checkbox" class="form-check-input"
@@ -49,16 +45,45 @@ class PostController extends Controller
                             ' . ($data->status == "active" ? "checked" : "") . '></div>';
                 })
                 ->addColumn('action', function ($data) {
-                    return '<a href="' . route('dynamicpages.edit', $data->id) . '" class="btn btn-sm btn-primary">
-                                <i class="fa-solid fa-pen"></i>
-                            </a>
+                    $viewRoute = route('post.show', ['id' => $data->id]);
+                    return ' <a class="btn btn-sm btn-primary" href="' . $viewRoute . '">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
                             <button type="button" onclick="showDeleteAlert(' . $data->id . ')" class="btn btn-sm btn-danger">
                                 <i class="fa-regular fa-trash-can"></i>
                             </button>';
                 })
-                ->rawColumns(['bulk_check', 'image', 'status', 'action'])
+                ->rawColumns(['bulk_check', 'image', 'status', 'action','username'])
                 ->make(true);
         }
         return view('backend.layout.post.index');
+    }
+
+    public function show($id)
+    {
+        $post = Post::with('user')->find($id);
+        return view('backend.layout.post.show', compact('post'));
+    }
+
+    public function destroy($id)
+    {
+        $item = Post::find($id);
+
+        if (!$item) {
+            return response()->json(['success' => false, 'message' => 'Item not found'], 404);
+        }
+
+        // Delete the file if it exists
+        if ($item->file_url && file_exists(public_path($item->file_url))) {
+            unlink(public_path($item->file_url));
+        }
+
+        $delete = $item->delete();
+
+        if ($delete) {
+            return response()->json(['success' => true, 'message' => 'Deleted Successfully']);
+        } else {
+            return response()->json(['success' => false, 'message' => 'Try Again!']);
+        }
     }
 }

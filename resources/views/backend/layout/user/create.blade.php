@@ -12,7 +12,7 @@
                 <form action="{{ route('user.store') }}" method="POST">@csrf
                     <div class="card card-body">
                         <h4 class="mb-4">User <span id="Categorytitle">Create</span></h4>
-                        <div class="row mb-2">
+                        {{-- <div class="row mb-2">
                             <label for="" class="col-3 col-form-label">User Role</label>
                             <div class="col-9">
                                 <select name="role" class="form-control" id="">
@@ -21,7 +21,7 @@
                                     <option value="user">User</option>
                                 </select>
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="row mb-2">
                             <label for="" class="col-3 col-form-label"><i>Name</i></label>
                             <div class="col-9">
@@ -29,13 +29,13 @@
                                     value="{{ old('name') }}">
                             </div>
                         </div>
-                        <div class="row mb-2">
+                        {{-- <div class="row mb-2">
                             <label for="" class="col-3 col-form-label"><i>Username</i></label>
                             <div class="col-9">
                                 <input type="text" name="username" class="form-control" placeholder="username..."
                                     value="{{ old('username') }}">
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="row mb-2">
                             <label for="" class="col-3 col-form-label"><i>Phone Number</i></label>
                             <div class="col-9">
@@ -43,13 +43,13 @@
                                     value="{{ old('phone') }}">
                             </div>
                         </div>
-                        <div class="row mb-2">
+                        {{-- <div class="row mb-2">
                             <label for="" class="col-3 col-form-label"><i>Birth Day</i></label>
                             <div class="col-9">
                                 <input type="text" name="birth_day" id="datepicker" class="form-control"
                                     placeholder="04/24/2025" value="">
                             </div>
-                        </div>
+                        </div> --}}
 
                         <div class="row mb-2">
                             <label for="" class="col-3 col-form-label"><i>Email</i></label>
