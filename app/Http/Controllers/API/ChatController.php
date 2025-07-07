@@ -6,6 +6,7 @@ use App\Events\NewMessageSent;
 use App\Helper\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\BlockUser;
+use App\Models\GroupRequest;
 use App\Models\MessageReact;
 use App\Models\User;
 use App\Traits\apiresponse;
@@ -19,6 +20,7 @@ use Namu\WireChat\Enums\ConversationType;
 use Namu\WireChat\Events\MessageCreated;
 use Namu\WireChat\Events\NotifyParticipant;
 use Namu\WireChat\Models\Conversation;
+use Namu\WireChat\Models\Group;
 
 class ChatController extends Controller
 {
@@ -343,5 +345,64 @@ class ChatController extends Controller
         $conversation->deleteFor($auth);
 
         return $this->success([], 'Delete Conversation successfully');
+    }
+
+    public function globalSearch(Request $request)
+    {
+        // 1. Validate input
+        $validation = Validator::make($request->all(), [
+            'query' => 'required|string',
+        ]);
+
+        if ($validation->fails()) {
+            return $this->error([], $validation->errors(), 422);
+        }
+
+        $query = $request->input('query');
+        $userId = auth()->id(); // assuming user is authenticated
+
+        // 2. Search users
+        $users = User::where(function ($q) use ($query) {
+            $q->where('name', 'like', '%' . $query . '%')
+                ->orWhere('email', 'like', '%' . $query . '%');
+        })->select('id', 'name', 'avatar')->get();
+
+        // 3. Search groups with conversation relation loaded
+        $groupsQuery = Group::with('conversation.participants')
+            ->where('name', 'like', '%' . $query . '%');
+
+        $groups = $groupsQuery->get();
+
+        // 4. Pre-fetch GroupRequests for the authenticated user
+        $groupRequests = GroupRequest::where('user_id', $userId)
+            ->whereIn('conversation_id', $groups->pluck('conversation_id')->filter()->unique())
+            ->pluck('conversation_id')
+            ->toArray();
+
+        // 5. Format group data with additional fields
+        $formattedGroups = $groups->map(function ($group) use ($userId, $groupRequests) {
+            $isParticipant = $group->conversation && $group->conversation->participants->isNotEmpty();
+            $hasRequested = in_array($group->conversation_id, $groupRequests);
+
+            $status = $isParticipant ? 'joined' : ($hasRequested ? 'requested' : 'join');
+
+            return [
+                'conversation_id' => $group->conversation_id,
+                'name' => $group->name,
+                'avatar_url' => $group->avatar_url ?? null,
+                'participants_count' => $group->conversation?->participants->count() ?? 0,
+                'status' => $status,
+                'type' => $group->type,
+                'created_at' => optional($group->created_at)->format('Y-m-d'),
+            ];
+        });
+
+        // 6. Combine and return
+        $results = [
+            'users' => $users,
+            'groups' => $formattedGroups,
+        ];
+
+        return $this->success($results, 'Search completed successfully');
     }
 }

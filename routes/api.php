@@ -19,7 +19,7 @@ use App\Http\Controllers\API\UserAuthController;
 use App\Http\Controllers\API\UserController;
 use App\Http\Controllers\API\WebhookController;
 use App\Http\Controllers\API\WishlistController;
-use App\Http\Controllers\BookmarkController;
+use App\Http\Controllers\API\BookmarkController;
 use App\Http\Controllers\RepostController;
 use App\Models\BlockUser;
 use App\Models\User;
@@ -76,7 +76,9 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
     // All comment route
     Route::controller(CommentController::class)->prefix('comment')->group(function () {
         Route::post('store', 'store');
-        Route::get('get/{type}/{id}', 'index');
+        Route::get('get/{id}', 'index');
+        Route::post('/reply/{comment}','reply');
+        Route::post('/react/{comment}','react');
     });
 
     // User Socal Media Link
@@ -160,6 +162,7 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::get('/chat/user/conversation/{user}', 'getUserConversation');
         Route::post('/chat/search', 'searchUsers');
         Route::post('/chat/create/covesation', 'createCovesation');
+        Route::post('/chat/globalSearch', 'globalSearch');
         Route::post('/chat/block', 'covesationBlock');
         Route::post('/chat/message/react', 'messageReact');
         Route::get('/chat/link/conversation/{encryptedId}', 'linkConversation');

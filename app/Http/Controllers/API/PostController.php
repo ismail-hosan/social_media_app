@@ -89,7 +89,7 @@ class PostController extends Controller
             'title' => 'required|string',
             'description' => 'required|string',
             'unknown' => 'required|in:true,false',
-            'image' => 'required|image',
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048'
         ]);
 
         if ($validator->fails()) {

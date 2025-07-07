@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\API;
 
 use App\Models\Bookmark;
 use App\Models\Post;
@@ -87,17 +87,14 @@ class BookmarkController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'bookmarkable_id' => 'required|integer',
+            'bookmarkable_id' => 'required|integer|exists:users,id',
             'type' => 'required|string|in:post,profile', // only allow these two
         ]);
 
         $user = auth()->user();
 
         // Determine the model class based on the 'type'
-        $bookmarkableType = match ($validated['type']) {
-            'post' => Post::class,
-            'profile' => User::class,
-        };
+        $bookmarkableType = User::class;
 
         // Check if already bookmarked
         $alreadyBookmarked = Bookmark::where('user_id', $user->id)

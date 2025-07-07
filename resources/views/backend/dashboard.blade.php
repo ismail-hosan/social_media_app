@@ -10,7 +10,8 @@
             <div class="">
                 <div class="order-1 col-lg-12 col-md-12">
                     <div class="row">
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        <a href="{{ route('user.list') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
@@ -24,8 +25,9 @@
                                     <h3 class="mb-2 card-title">{{ $total_user ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        </a>
+                        <a href="{{ route('user.list') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
@@ -41,8 +43,9 @@
                                     <h3 class="mb-2 card-title">{{ $active_user ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        </a>
+                        <a href="{{ route('user.list') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
@@ -58,9 +61,10 @@
                                     <h3 class="mb-2 card-title">{{ $inactive_user ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
+                        </a>
 
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        <a href="{{ route('user.list') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
@@ -76,12 +80,13 @@
                                     <h3 class="mb-2 card-title">{{ $verify_user ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     </div>
                 </div>
                 <div class="order-1 col-lg-12 col-md-12">
                     <div class="row">
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        <a href="{{ route('post.index') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
@@ -95,8 +100,9 @@
                                     <h3 class="mb-2 card-title">{{ $total_post ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        </a>
+                        <a href="{{ route('post.index') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
@@ -112,8 +118,9 @@
                                     <h3 class="mb-2 card-title">{{ $today_post ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        </a>
+                        <a href="{{ route('group.index') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
@@ -129,14 +136,15 @@
                                     <h3 class="mb-2 card-title">{{ $total_channel ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
-                        <div class="mb-4 col-lg-3 col-md-3 col-6">
+                        </a>
+                        <a href="{{ route('group.index') }}" class="mb-4 col-lg-3 col-md-3 col-6"
+                            style="text-decoration: none">
                             <div class="card">
                                 <div class="card-body">
                                     <div class="card-title d-flex align-items-start justify-content-between">
                                         <div class="flex-shrink-0 avatar">
-                                            <img src="{{ asset('backend/app-assets/images/channel.png') }}" alt="Credit Card"
-                                                height="90px" width="90px" class="" />
+                                            <img src="{{ asset('backend/app-assets/images/channel.png') }}"
+                                                alt="Credit Card" height="90px" width="90px" class="" />
                                         </div>
 
                                     </div>
@@ -146,7 +154,7 @@
                                     <h3 class="mb-2 card-title">{{ $channelToday ?? 0 }}</h3>
                                 </div>
                             </div>
-                        </div>
+                        </a>
                     </div>
                 </div>
             </div>

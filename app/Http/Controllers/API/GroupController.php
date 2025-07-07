@@ -126,10 +126,18 @@ class GroupController extends Controller
             // Add the specified user
             $newUser = User::find($request->user_id);
             $data = $conversation->addParticipant($newUser);
+            if ($data) {
+                $grouprequest = GroupRequest::where('user_id', $request->user_id)
+                    ->where('conversation_id', $request->conversation_id)
+                    ->first();
 
+                if ($grouprequest) {
+                    $grouprequest->delete(); // now safe to delete
+                }
+            }
             return $this->success($data, 'Member added successfully!', 200);
         } catch (\Throwable $th) {
-            return $this->error([], [$th->getMessage()], 401);
+            return $this->error([], [$th->getMessage()], 422);
         }
     }
 
@@ -275,6 +283,8 @@ class GroupController extends Controller
             $group = $request->conversation->group;
 
             return [
+                'user_id' => $request->user_id,
+                'conversation_id' => $request->conversation_id,
                 'user_name' => $request->user->name ?? '',
                 'user_avatar' => $request->user->avatar ?? '',
                 'group_name' => $group->name ?? '',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Comment;
+use App\Models\CommentReact;
 use App\Models\Post;
 use App\Models\Reel;
 use App\Services\Service;
@@ -14,23 +15,22 @@ use Illuminate\Support\Facades\Validator;
 class CommentController extends Controller
 {
     use apiresponse;
-    public function index($type, $id)
+    public function index($id)
     {
-        $typesMap = [
-            'post' => \App\Models\Post::class,
-            'reel' => \App\Models\Reel::class,
-        ];
+        $comments = Comment::where('commentable_id', $id)
+            ->with(['user:id,name,avatar', 'replies.user:id,name,avatar', 'react'])
+            ->get()
+            ->map(function ($comment) {
+                $comment->time_ago = $comment->created_at->diffForHumans();
+                $comment->react_count = $comment->react->count(); // Add react count here
 
-        if (!array_key_exists($type, $typesMap)) {
-            return $this->error([], 'Invalid commentable type.');
-        }
+                $comment->replies->map(function ($reply) {
+                    $reply->time_ago = $reply->created_at->diffForHumans();
+                    return $reply;
+                });
 
-        $commentableClass = $typesMap[$type];
-
-        $comments = Comment::where('commentable_type', $commentableClass)
-            ->where('commentable_id', $id)
-            ->with('user')
-            ->get();
+                return $comment;
+            });
 
         return $this->success($comments, 'Comments fetched successfully!', 200);
     }
@@ -40,7 +40,7 @@ class CommentController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'comment' => 'required|string',
-            'commentable_id' => 'required|integer',
+            'commentable_id' => 'required|integer|exists:posts,id',
             'commentable_type' => 'required|in:post,reel',
         ]);
 
@@ -62,5 +62,46 @@ class CommentController extends Controller
             'commentable_type' => $model,
         ]);
         return $this->success($comment, 'Comment added successfully!', 201);
+    }
+
+    public function reply(Request $request, Comment $comment)
+    {
+        $validated = $request->validate([
+            'body' => 'required|string',
+        ]);
+
+        $reply = $comment->replies()->create([
+            'user_id' => $request->user()->id,
+            'body' => $validated['body'],
+            'commentable_id' => $comment->commentable_id,
+            'commentable_type' => $comment->commentable_type,
+        ]);
+
+        return $this->success($reply, 'Reply added successfully.', 200);
+    }
+
+    public function react(Request $request, Comment $comment)
+    {
+        $validated = $request->validate([
+            'react' => 'required|string|in:love,like',
+        ]);
+
+        $user = auth()->user();
+
+        $existingReaction = CommentReact::where('user_id', $user->id)
+            ->where('comment_id', $comment->id)
+            ->first();
+
+        if ($existingReaction) {
+            $existingReaction->type = $validated['react'];
+            $existingReaction->save();
+        } else {
+            CommentReact::create([
+                'user_id' => $user->id,
+                'comment_id' => $comment->id,
+                'type' => $validated['react'],
+            ]);
+        }
+        return $this->success(['react' => $validated['react']], 'Reaction saved successfully.', 200);
     }
 }

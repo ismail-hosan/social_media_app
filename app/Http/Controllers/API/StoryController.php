@@ -169,7 +169,7 @@ class StoryController extends Controller
         // Step 7: Get all stories of the selected user
         $otherStories = Story::where('user_id', $id)
             ->orderByDesc('id')
-            ->with(['user'])
+            ->with(['user:id,name,avatar,base'])
             ->get();
 
         return $this->success([
