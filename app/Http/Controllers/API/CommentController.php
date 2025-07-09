@@ -18,18 +18,11 @@ class CommentController extends Controller
     public function index($id)
     {
         $comments = Comment::where('commentable_id', $id)
-            ->with(['user:id,name,avatar', 'replies.user:id,name,avatar', 'react'])
+            // ->whereNull('parent_id')
+            ->with(['user:id,name,avatar', 'replies'])
             ->get()
             ->map(function ($comment) {
-                $comment->time_ago = $comment->created_at->diffForHumans();
-                $comment->react_count = $comment->react->count(); // Add react count here
-
-                $comment->replies->map(function ($reply) {
-                    $reply->time_ago = $reply->created_at->diffForHumans();
-                    return $reply;
-                });
-
-                return $comment;
+                return $this->transformComment($comment);
             });
 
         return $this->success($comments, 'Comments fetched successfully!', 200);
@@ -68,6 +61,7 @@ class CommentController extends Controller
     {
         $validated = $request->validate([
             'body' => 'required|string',
+            'parent_id' => 'nullable|exists:comments,id',
         ]);
 
         $reply = $comment->replies()->create([
@@ -75,6 +69,7 @@ class CommentController extends Controller
             'body' => $validated['body'],
             'commentable_id' => $comment->commentable_id,
             'commentable_type' => $comment->commentable_type,
+            'parent_id' => $validated['parent_id'] ?? $comment->id,
         ]);
 
         return $this->success($reply, 'Reply added successfully.', 200);
@@ -103,5 +98,16 @@ class CommentController extends Controller
             ]);
         }
         return $this->success(['react' => $validated['react']], 'Reaction saved successfully.', 200);
+    }
+
+    private function transformComment($comment)
+    {
+        $comment->time_ago = $comment->created_at->diffForHumans();
+
+        $comment->replies = $comment->replies->map(function ($reply) {
+            return $this->transformComment($reply); // recursive call
+        });
+
+        return $comment;
     }
 }

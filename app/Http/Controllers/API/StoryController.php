@@ -134,19 +134,20 @@ class StoryController extends Controller
     public function all($id)
     {
         $authUser = auth()->user();
+        $authUserId = $authUser->id;
 
         // Step 1: Get all the users the auth user follows
-        $followedUserIds = Follow::where('user_id', $authUser->id)->pluck('follower_id');
-        $blockedUserIds = StoryBlocked::where('user_id', $authUser->id)->pluck('blocked_user_id');
-        $mutedUserIds = StoryMute::where('user_id', $authUser->id)->pluck('mute_user_id');
-        $reportedUserIds = StoryReport::where('user_id', $authUser->id)->pluck('report_user_id');
+        $followedUserIds = Follow::where('user_id', $authUserId)->pluck('follower_id');
+        $blockedUserIds = StoryBlocked::where('user_id', $authUserId)->pluck('blocked_user_id');
+        $mutedUserIds = StoryMute::where('user_id', $authUserId)->pluck('mute_user_id');
+        $reportedUserIds = StoryReport::where('user_id', $authUserId)->pluck('report_user_id');
 
         // Step 3: Create final valid user list
         $validUserIds = $followedUserIds
             ->diff($blockedUserIds)
             ->diff($mutedUserIds)
             ->diff($reportedUserIds)
-            ->push($authUser->id) // always include self
+            ->push($authUserId) // always include self
             ->unique();
 
         // Step 4: Only take users who actually have stories
@@ -170,7 +171,11 @@ class StoryController extends Controller
         $otherStories = Story::where('user_id', $id)
             ->orderByDesc('id')
             ->with(['user:id,name,avatar,base'])
-            ->get();
+            ->get()
+            ->map(function ($story) use ($authUserId) {
+                $story->is_me = $story->user_id === $authUserId;
+                return $story;
+            });
 
         return $this->success([
             'stories' => $otherStories,
@@ -178,6 +183,7 @@ class StoryController extends Controller
             'next_user_id' => $nextUserId ?? 0,
         ], 'Successfully!', 200);
     }
+
 
 
     public function reactShow($id)

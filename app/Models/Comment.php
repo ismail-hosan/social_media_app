@@ -10,7 +10,7 @@ class Comment extends Model
 {
     protected $fillable = ['user_id', 'body', 'commentable_id', 'commentable_type', 'parent_id'];
 
-    protected $hidden = ['created_at','parent_id','updated_at','commentable_id','commentable_type'];
+    protected $hidden = ['created_at', 'parent_id', 'updated_at', 'commentable_id', 'commentable_type'];
     public function commentable()
     {
         return $this->morphTo();
@@ -21,21 +21,26 @@ class Comment extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function parent(): BelongsTo
+    public function parent()
     {
-        return $this->belongsTo(Comment::class, 'parent_id');
+        return $this->hasMany(Comment::class, 'parent_id')->with('replies');
     }
 
     /**
      * Replies to this comment.
      */
-    public function replies(): HasMany
+    public function replies()
     {
-        return $this->hasMany(Comment::class, 'parent_id');
+        return $this->hasMany(Comment::class, 'parent_id')->with(['replies', 'user']); // recursive + user
     }
 
     public function react()
     {
-        return $this->hasMany(CommentReact::class,'comment_id');
+        return $this->hasMany(CommentReact::class, 'comment_id');
+    }
+
+    public function repliesRecursive()
+    {
+        return $this->hasMany(Comment::class, 'parent_id')->with('repliesRecursive');
     }
 }

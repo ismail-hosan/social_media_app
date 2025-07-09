@@ -96,7 +96,7 @@ class FollowController extends Controller
                     ->pluck('user_id');
 
                 $users = User::whereIn('id', $userIds)
-                    ->select('id', 'name', 'avatar')
+                    ->select('id', 'name', 'avatar', 'base', 'location')
                     ->get();
 
                 return $this->success($addIsLikeFlag($users), 'Following users fetched', 200);
@@ -108,7 +108,7 @@ class FollowController extends Controller
                     ->pluck('user_id');
 
                 $users = User::whereIn('id', $userIds)
-                    ->select('id', 'name', 'avatar')
+                    ->select('id', 'name', 'avatar', 'base', 'location')
                     ->get();
 
                 return $this->success($addIsLikeFlag($users), 'Pending friend requests fetched', 200);
@@ -131,7 +131,7 @@ class FollowController extends Controller
 
                 $users = User::where('id', '!=', $userId)
                     ->whereNotIn('id', $connectedUsers)
-                    ->select('id', 'name', 'avatar')
+                    ->select('id', 'name', 'avatar', 'base', 'location')
                     ->latest()
                     ->get();
 
@@ -186,7 +186,7 @@ class FollowController extends Controller
                 $query->where('user_id', $userId);
             }])
             ->latest()
-            ->paginate(5);   
+            ->paginate(5);
         // Transform each post
         $posts->getCollection()->transform(function ($post) {
             if ($post->user) {
