@@ -77,8 +77,8 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
     Route::controller(CommentController::class)->prefix('comment')->group(function () {
         Route::post('store', 'store');
         Route::get('get/{id}', 'index');
-        Route::post('/reply/{comment}','reply');
-        Route::post('/react/{comment}','react');
+        Route::post('/reply/{comment}', 'reply');
+        Route::post('/react/{comment}', 'react');
     });
 
     // User Socal Media Link
@@ -113,6 +113,7 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::get('followersPosts', 'followersPosts');
         Route::get('get', 'index');
         Route::post('accept', 'accept');
+        Route::post('deny', 'deny');
         Route::get('findfriends', 'findfriends');
     });
 

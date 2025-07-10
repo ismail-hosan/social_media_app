@@ -7,6 +7,7 @@ use App\Models\Follow;
 use App\Models\Post;
 use App\Models\User;
 use App\Traits\apiresponse;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -108,11 +109,14 @@ class FollowController extends Controller
                     ->pluck('user_id');
 
                 $users = User::whereIn('id', $userIds)
-                    ->select('id', 'name', 'avatar', 'base', 'location')
-                    ->get();
+                    ->select('id', 'name', 'avatar', 'base', 'location', 'created_at')
+                    ->get()
+                    ->map(function ($user) {
+                        $user->created_at_formatted = Carbon::parse($user->created_at)->diffForHumans(); // or ->format('Y-m-d H:i:s')
+                        return $user;
+                    });
 
                 return $this->success($addIsLikeFlag($users), 'Pending friend requests fetched', 200);
-
             case 'potential':
                 $following = DB::table('follows')
                     ->where('follower_id', $userId)
@@ -142,27 +146,53 @@ class FollowController extends Controller
     public function accept(Request $request)
     {
         $request->validate([
-            'follower_id' => ['required', 'exists:follows,id'],
+            'follower_id' => ['required', 'exists:users,id'],
         ]);
 
-        $followRequest = $this->follow->find($request->id);
+        $followRequest = $this->follow
+            ->where('user_id', $request->follower_id)
+            ->where('follower_id', auth()->user()->id)
+            ->where('status', 'pending')
+            ->first();
+        if (!$followRequest) {
+            return $this->error([], 'Not Found this request', 404);
+        }
 
         if ($followRequest->follower_id != auth()->id()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized to accept this request'
-            ], 403);
+            return $this->error([], 'Unauthorized to accept this request', 403);
         }
 
         // Mark as accepted (you'll need a column like 'status' => 'pending' | 'accepted')
-        $followRequest->status = 'accepted';
+        $followRequest->status = 'success';
         $followRequest->save();
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Follow request accepted',
-            'data' => $followRequest
-        ], 200);
+        return $this->success($followRequest, 'Follow request accepted', 200);
+    }
+
+    public function deny(Request $request)
+    {
+        $request->validate([
+            'follower_id' => ['required', 'exists:users,id'],
+        ]);
+
+        $followRequest = $this->follow
+            ->where('user_id', $request->follower_id)
+            ->where('follower_id', auth()->user()->id)
+            ->where('status', 'pending')
+            ->first();
+        if (!$followRequest) {
+            return $this->error([], 'Not Found this request', 404);
+        }
+
+        if ($followRequest->follower_id != auth()->id()) {
+            return $this->error([], 'Unauthorized to accept this request', 403);
+        }
+
+        // Mark as accepted (you'll need a column like 'status' => 'pending' | 'accepted')
+        $followRequest->status = 'success';
+        $followRequest->delete();
+
+        return $this->success($followRequest, 'Follow request delete', 200);
     }
 
     public function search(Request $request) {}

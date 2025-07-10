@@ -18,11 +18,11 @@ class CommentController extends Controller
     public function index($id)
     {
         $comments = Comment::where('commentable_id', $id)
-            // ->whereNull('parent_id')
+            ->whereNull('parent_id') // Only top-level comments
             ->with(['user:id,name,avatar', 'replies'])
             ->get()
             ->map(function ($comment) {
-                return $this->transformComment($comment);
+                return $this->transformComment($comment); // Recursive
             });
 
         return $this->success($comments, 'Comments fetched successfully!', 200);
@@ -60,19 +60,24 @@ class CommentController extends Controller
     public function reply(Request $request, Comment $comment)
     {
         $validated = $request->validate([
-            'body' => 'required|string',
-            'parent_id' => 'nullable|exists:comments,id',
+            'body' => 'required|string|max:1000',
         ]);
 
-        $reply = $comment->replies()->create([
+        $reply = Comment::create([
             'user_id' => $request->user()->id,
             'body' => $validated['body'],
-            'commentable_id' => $comment->commentable_id,
             'commentable_type' => $comment->commentable_type,
-            'parent_id' => $validated['parent_id'] ?? $comment->id,
+            'commentable_id' => $comment->commentable_id,
+            'parent_id' => $comment->id,
         ]);
 
-        return $this->success($reply, 'Reply added successfully.', 200);
+        $reply->load(['user:id,name,avatar', 'replies']);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Reply saved successfully!',
+            'data' => $this->transformComment($reply),
+        ], 201);
     }
 
     public function react(Request $request, Comment $comment)
@@ -102,12 +107,14 @@ class CommentController extends Controller
 
     private function transformComment($comment)
     {
-        $comment->time_ago = $comment->created_at->diffForHumans();
-
-        $comment->replies = $comment->replies->map(function ($reply) {
-            return $this->transformComment($reply); // recursive call
-        });
-
-        return $comment;
+        return [
+            'id' => $comment->id,
+            'body' => $comment->body,
+            'user' => $comment->user,
+            'created_at' => $comment->created_at,
+            'replies' => $comment->replies->map(function ($reply) {
+                return $this->transformComment($reply); // Recursive
+            })
+        ];
     }
 }

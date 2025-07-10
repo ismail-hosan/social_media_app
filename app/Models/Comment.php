@@ -31,7 +31,7 @@ class Comment extends Model
      */
     public function replies()
     {
-        return $this->hasMany(Comment::class, 'parent_id')->with(['replies', 'user']); // recursive + user
+        return $this->hasMany(Comment::class, 'parent_id')->with(['replies', 'user:id,name,avatar']); // recursive + user
     }
 
     public function react()
