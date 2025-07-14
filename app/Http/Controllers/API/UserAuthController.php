@@ -356,20 +356,9 @@ class UserAuthController extends Controller
             }
 
             // Get list of users this user has liked
-            $likedUsers = $user->likes()
-                ->with('likeable.socalMedia') // Eager load socalMedia from the likeable (User)
-                ->get()
-                ->filter(function ($like) {
-                    return $like->likeable instanceof \App\Models\User;
-                })
-                ->map(function ($like) {
-                    return [
-                        'id' => $like->likeable->id,
-                        'name' => $like->likeable->name,
-                        'avatar' => $like->likeable->avatar,
-                        // 'social_media' => $like->likeable->socalMedia ?? null,
-                    ];
-                });
+            $likedUsers = $user->bookmarks()
+                ->with('bookmarkable:id,name,avatar') // Eager load socalMedia from the likeable (User)
+                ->get();      
 
             $response = [
                 'id' => $user->id,
@@ -377,10 +366,11 @@ class UserAuthController extends Controller
                 'avatar' => $user->avatar ?? null,
                 'cover_image' => $user->cover_image ?? null,
                 'username' => $user->username,
+                'location' => $user->location,
                 'bio' => $user->bio,
                 'joined' => 'Joined ' . $user->created_at->format('M Y'),
                 'liked_users' => $likedUsers,
-                'media' => $user->socalMedia
+                'media' => $user->socalMedia->select('social_media_type', 'url'),
             ];
 
             return $this->success([

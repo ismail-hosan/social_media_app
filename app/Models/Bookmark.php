@@ -8,6 +8,8 @@ class Bookmark extends Model
 {
     protected $fillable = ['user_id', 'bookmarkable_id', 'bookmarkable_type'];
 
+    protected $hidden = ['user_id','bookmarkable_id','bookmarkable_type','created_at', 'updated_at'];
+
     public function bookmarkable()
     {
         return $this->morphTo();
