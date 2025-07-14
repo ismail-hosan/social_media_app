@@ -57,4 +57,9 @@ class Post extends Model
     {
         return $this->hasMany(StoryImage::class, 'post_id');
     }
+
+    public function mentions()
+    {
+        return $this->hasMany(Mention::class, 'post_id');
+    }
 }

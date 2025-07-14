@@ -35,9 +35,7 @@ class GroupController extends Controller
 
         $groupsQuery = Group::with([
             'cover',
-            'conversation.participants' => function ($q) use ($userId) {
-                $q->where('participantable_id', $userId);
-            }
+            'conversation.participants'
         ])->select('id', 'conversation_id', 'name', 'avatar_url', 'description', 'type', 'created_at');
 
         // 1. If searching by keyword
@@ -67,9 +65,10 @@ class GroupController extends Controller
             ->toArray();
 
         $results = $groups->map(function ($group) use ($userId, $groupRequests) {
-            $isParticipant = $group->conversation && $group->conversation->participants->isNotEmpty();
+            // $isParticipant = $group->conversation && $group->conversation->participants->isNotEmpty();
+            $isParticipant = $group->conversation && $group->conversation->participants->contains('participantable_id', $userId);
             $hasRequested = in_array($group->conversation_id, $groupRequests);
-
+            // dd($group->conversation?->participants->count());
             $status = $isParticipant ? 'joined' : ($hasRequested ? 'requested' : 'join');
             // dd($group);
             return [
@@ -472,6 +471,7 @@ class GroupController extends Controller
             'conversation_id' => 'required|integer|exists:wire_conversations,id',
             'type' => 'sometimes|nullable|in:private,public',
             'image' => 'sometimes|nullable|image|max:2048',
+            'description' => 'sometimes|nullable|string',
         ]);
 
         if ($validation->fails()) {
@@ -495,7 +495,9 @@ class GroupController extends Controller
         if ($request->filled('type')) {
             $data['type'] = $request->type;
         }
-
+        if ($request->filled('description')) {
+            $data['description'] = $request->description;
+        }
         if ($request->hasFile('image')) {
             // Delete old image if exists
             if ($group && $group->avatar_url && Storage::disk(WireChat::storageDisk())->exists($group->avatar_url)) {

@@ -16,6 +16,7 @@ use App\Notifications\Notify;
 use Illuminate\Support\Facades\Validator;
 use App\Traits\apiresponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
@@ -29,37 +30,47 @@ class PostController extends Controller
     {
         $this->posts = $post;
     }
+
+
     public function index(Request $request)
     {
-        $user_id = auth()->user()->id;
+        $authUser = auth()->user();
+        $user_id = $authUser->id;
+
+        // Optional override
         if ($request->user_id) {
             $user_id = $request->user_id;
         }
 
-        $liked = $request->liked; // Accept true or false
+        $liked = $request->tag; // true or false
 
+        // Start base query
         $query = $this->posts
-            ->where('user_id', $user_id)
             ->with(['user:id,name,avatar,base'])
             ->withCount(['likes', 'comments'])
-            ->with(['bookmarks' => function ($q) use ($user_id) {
-                $q->where('user_id', $user_id);
+            ->with(['bookmarks' => function ($q) use ($authUser) {
+                $q->where('user_id', $authUser->id);
             }]);
 
-        if (!is_null($liked)) {
-            if (filter_var($liked, FILTER_VALIDATE_BOOLEAN)) {
-                $query->whereHas('likes', function ($q) use ($user_id) {
-                    $q->where('user_id', $user_id);
-                });
-            } else {
-                $query->whereDoesntHave('likes', function ($q) use ($user_id) {
-                    $q->where('user_id', $user_id);
-                });
-            }
+        // Tag check: if true, fetch posts where auth user has mentioned others
+        if ($liked === 'true' || $liked === true) {
+            // Get mentioned user IDs by auth user
+            $mentionedUserIds = DB::table('mentions')
+                ->where('mentioned_id', $authUser->id)
+                ->pluck('post_id')
+                ->unique()             // <-- Laravel Collection method to remove duplicates
+                ->values();
+
+            $query->whereIn('id', $mentionedUserIds);
+        } else {
+            // Default: fetch posts by user_id
+            $query->where('user_id', $user_id);
         }
 
+        // Get the latest posts
         $posts = $query->latest()->get();
 
+        // Transform each post
         $posts->transform(function ($post) {
             $post->is_bookmarked = $post->bookmarks->isNotEmpty();
             $post->is_likes = $post->likes_count > 0;
@@ -72,8 +83,6 @@ class PostController extends Controller
                     'avatar' => null,
                 ];
             }
-
-            unset($post->repost);
             unset($post->bookmarks);
 
             return $post;
