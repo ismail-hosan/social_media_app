@@ -358,7 +358,7 @@ class UserAuthController extends Controller
             // Get list of users this user has liked
             $likedUsers = $user->bookmarks()
                 ->with('bookmarkable:id,name,avatar') // Eager load socalMedia from the likeable (User)
-                ->get();      
+                ->get();
 
             $response = [
                 'id' => $user->id,
@@ -366,9 +366,10 @@ class UserAuthController extends Controller
                 'avatar' => $user->avatar ?? null,
                 'cover_image' => $user->cover_image ?? null,
                 'username' => $user->username,
+                'status' => $user->status,
                 'location' => $user->location,
-                'bio' => $user->bio,
                 'joined' => 'Joined ' . $user->created_at->format('M Y'),
+                'bio' => json_decode($user->bio) ?? $user->bio,
                 'liked_users' => $likedUsers,
                 'media' => $user->socalMedia->select('social_media_type', 'url'),
             ];
@@ -422,6 +423,4 @@ class UserAuthController extends Controller
     {
         return Auth::guard();
     }
-
-   
 }

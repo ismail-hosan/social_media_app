@@ -31,7 +31,6 @@ class UserController extends Controller
             'avatar' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'cover_image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'phone' => ['sometimes', 'nullable', 'string'],
-            'bio' => ['sometimes', 'nullable', 'string'],
         ]);
 
         if ($validation->fails()) {
@@ -49,7 +48,6 @@ class UserController extends Controller
                 'location',
                 'website',
                 'phone',
-                'bio',
             ]));
 
             if ($request->hasFile('avatar')) {
@@ -84,6 +82,45 @@ class UserController extends Controller
     }
 
 
+    public function storeBio(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'username' => ['sometimes', 'string', 'required', 'max:255'],
+            'nickname' => ['sometimes', 'required', 'string', 'max:50'],
+            'gender' => ['sometimes', 'required', 'string', 'max:50'],
+            'avatar' => ['sometimes', 'required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'industry' => ['sometimes', 'required', 'string', 'max:50'],
+            'stages' => ['sometimes', 'required', 'string'],
+        ]);
+
+        if ($validation->fails()) {
+            return $this->error([], $validation->errors(), 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $data = $request->only(['username', 'nickname', 'gender', 'industry', 'stages']);
+
+            // Handle avatar upload
+            if ($request->hasFile('avatar')) {
+                $filePath = Helper::uploadImage($request->file('avatar'), 'users', $user->avatar ?? null);
+                $data['avatar'] = $filePath;
+            }
+
+            // Save JSON encoded data to 'bio' field
+            $user = auth()->user(); // Or use another model if needed
+            $user->bio = json_encode($data);
+            $user->save();
+
+            DB::commit();
+
+            return $this->success(['bio' => $user->bio], 'Bio saved successfully.');
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            return $this->error([], 'Something went wrong.', 500);
+        }
+    }
 
 
 

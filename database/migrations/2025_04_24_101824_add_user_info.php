@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('cover_image')->nullable();
-            $table->string('bio')->nullable();
+            $table->json('bio')->nullable();
             $table->string('location')->nullable();
             $table->string('website')->nullable();
         });

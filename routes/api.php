@@ -213,6 +213,7 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
 
     // Get Notifications
     Route::get('/my-notifications', [UserController::class, 'getMyNotifications']);
+    Route::post('/bio-store', [UserController::class, 'storeBio']);
     Route::get('send-notification', function () {
         $user = User::where('id', Auth::id())->first();
         $user->notify(new Notify("Test Notification"));
