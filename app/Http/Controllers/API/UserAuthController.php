@@ -368,6 +368,7 @@ class UserAuthController extends Controller
                 'username' => $user->username,
                 'status' => $user->status,
                 'location' => $user->location,
+                'base' => $user->base,
                 'joined' => 'Joined ' . $user->created_at->format('M Y'),
                 'bio' => json_decode($user->bio) ?? $user->bio,
                 'liked_users' => $likedUsers,

@@ -33,7 +33,7 @@ class SocalMediaLinkController extends Controller
             'social_media_type' => [
                 'required',
                 'string',
-                Rule::in(['facebook', 'twitter', 'instagram', 'linkedin', 'youtube']),
+                Rule::in(['facebook', 'twitter', 'instagram', 'twitter', 'youtube', 'snapshort', 'descort', 'whatsapp', 'tiktok']),
             ],
             'url' => ['required', 'url', 'max:255'],
         ]);
@@ -61,5 +61,34 @@ class SocalMediaLinkController extends Controller
 
             return $this->success($newLink, 'Social media link added successfully!', 200);
         }
+    }
+
+    public function destroy(Request $request)
+    {
+        $validated = $request->validate([
+            'bookmarkable_id' => 'required|integer|exists:users,id',
+            'type' => 'required|string|in:post,profile',
+        ]);
+
+        $user = auth()->user();
+
+        // Determine model based on 'type'
+        $bookmarkableType = match ($validated['type']) {
+            'profile' => \App\Models\User::class,
+            'post' => \App\Models\Post::class,
+        };
+
+        $bookmark = \App\Models\Bookmark::where('user_id', $user->id)
+            ->where('bookmarkable_id', $validated['bookmarkable_id'])
+            ->where('bookmarkable_type', $bookmarkableType)
+            ->first();
+
+        if (!$bookmark) {
+            return $this->error('Bookmark not found.', 404);
+        }
+
+        $bookmark->delete();
+
+        return $this->success([], 'Bookmark removed successfully.', 200);
     }
 }

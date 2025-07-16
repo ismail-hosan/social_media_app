@@ -121,6 +121,7 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
     Route::controller(BookmarkController::class)->prefix('bookmarks')->group(function () {
         Route::post('store', 'store');
         Route::get('get', 'index');
+        Route::post('delete', 'destroy');
     });
 
 
