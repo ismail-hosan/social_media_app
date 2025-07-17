@@ -35,57 +35,61 @@ class PostController extends Controller
     public function index(Request $request)
     {
         $authUser = auth()->user();
-        $authUserId = $authUser->id;
+        $user_id = $authUser->id;
 
-        // Step 1: Resolve target user by username, or fallback to auth user
-        if ($request->filled('username')) {
-            $user = User::select('id', 'name')->where('name', $request->username)->first();
+        // Optional override
+        if ($request->user_id) {
+            $user_id = $request->user_id;
+        }
 
-            if (!$user) {
-                return $this->error('User not found', 404);
-            }
+        $liked = $request->tag; // true or false
+
+        // Start base query
+        $query = $this->posts
+            ->with(['user:id,name,avatar,base'])
+            ->withCount(['likes', 'comments'])
+            ->with(['bookmarks' => function ($q) use ($authUser) {
+                $q->where('user_id', $authUser->id);
+            }]);
+
+        // Tag check: if true, fetch posts where auth user has mentioned others
+        if ($liked === 'true' || $liked === true) {
+            // Get mentioned user IDs by auth user
+            $mentionedUserIds = DB::table('mentions')
+                ->where('mentioned_id', $authUser->id)
+                ->pluck('post_id')
+                ->unique()             // <-- Laravel Collection method to remove duplicates
+                ->values();
+
+            $query->whereIn('id', $mentionedUserIds);
         } else {
-            $user = $authUser;
+            // Default: fetch posts by user_id
+            $query->where('user_id', $user_id);
         }
 
-        // Step 2: Prepare query builder from the user posts relationship
-        $query = $user->posts()
-            ->with([
-                'user:id,name,avatar,base',
-                'bookmarks' => fn($q) => $q->where('user_id', $authUserId),
-            ])
-            ->withCount(['likes', 'comments']);
+        // Get the latest posts
+        $posts = $query->latest()->get();
 
-        // Step 3: Apply tag-based filtering (mentions)
-        if (filter_var($request->tag, FILTER_VALIDATE_BOOLEAN)) {
-            $query->whereIn('id', function ($subQuery) use ($authUserId) {
-                $subQuery->select('post_id')
-                    ->from('mentions')
-                    ->where('mentioned_id', $authUserId);
-            });
-        }
-
-        // Step 4: Paginate for scalability
-        $perPage = (int) $request->get('per_page', 10); // default 10 per page
-        $posts = $query->latest()->paginate($perPage);
-
-        // Step 5: Transform posts collection inside paginator
-        $posts->getCollection()->transform(function ($post) {
+        // Transform each post
+        $posts->transform(function ($post) {
             $post->is_bookmarked = $post->bookmarks->isNotEmpty();
             $post->is_likes = $post->likes_count > 0;
             $post->created_date = $post->created_at->format('M d, Y');
 
             if ($post->unknown === 1) {
-                $post->user = (object) ['name' => 'Unknown', 'avatar' => null];
+                unset($post->user);
+                $post->user = (object) [
+                    'name' => 'Unknown',
+                    'avatar' => null,
+                ];
             }
-
             unset($post->bookmarks);
+
             return $post;
         });
 
         return $this->success($posts, 'Posts fetched successfully!', 200);
     }
-
 
 
     public function store(Request $request)

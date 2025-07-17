@@ -345,44 +345,39 @@ class UserAuthController extends Controller
         try {
             $authUser = auth()->user();
             $user = $authUser;
-            $followStatus = 'me';
-            $isMe = true;  // default true, jodi onno user hoy seta update hobe
 
-            // Check if viewing another user's profile
-            if ($request->filled('username') && $request->username !== $authUser->username) {
-                $user = User::where('username', $request->username)
-                    ->select('id', 'name', 'username', 'avatar', 'cover_image', 'status', 'location', 'base', 'bio', 'created_at')
-                    ->first();
+            // Check if another user is being requested
+            if ($request->filled('user_id') && $request->user_id != $authUser->id) {
+                $user = User::find($request->user_id);
 
                 if (!$user) {
                     return $this->error('User not found', 404);
                 }
-
-                // Since profile is not auth user, set isMe false
-                $isMe = false;
-
-                // Determine follow status
-                $followRelation = DB::table('follows')
-                    ->where('user_id', $user->id)
-                    ->where('follower_id', $authUser->id)
-                    ->select('status')
-                    ->first();
-
-                $followStatus = 'none';
-                if ($followRelation) {
-                    $followStatus = $followRelation->status === 'success' ? 'following' : 'requested';
-                }
             }
 
-            // Get liked users/bookmarks
+            // Determine follow status
+            $followRelation = DB::table('follows')
+                ->where('user_id', $user->id)
+                ->where('follower_id', $authUser->id)
+                ->select('status')
+                ->first();
+
+
+            $followStatus = 'none';
+            if ($followRelation) {
+                $followStatus = $followRelation->status === 'success' ? 'following' : 'requested';
+            }
+
+            // Get list of users this user has bookmarked (liked)
             $likedUsers = $user->bookmarks()
                 ->with('bookmarkable:id,name,avatar')
                 ->get();
 
-            // Get social media links
-            $media = $user->socalMedia()->select('social_media_type', 'url')->get();
+            // Retrieve social media links
+            $media = $user->socalMedia()
+                ->select('social_media_type', 'url')
+                ->get();
 
-            // Prepare response
             $response = [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -393,21 +388,20 @@ class UserAuthController extends Controller
                 'location' => $user->location,
                 'base' => $user->base,
                 'joined' => 'Joined ' . $user->created_at->format('M Y'),
-                'bio' => json_decode($user->bio) ?? $user->bio,
+                'bio' => is_string($user->bio) ? json_decode($user->bio, true) ?? $user->bio : $user->bio,
                 'liked_users' => $likedUsers,
                 'media' => $media,
                 'follow_status' => $followStatus,
-                'is_me' => $isMe,  // ei line add korben
+                'is_me' => $user->id === $authUser->id,
             ];
 
             return $this->success([
                 'user' => $response,
             ], 'User retrieved successfully', 200);
-        } catch (\Throwable $th) {
-            return $this->error('User not found', 404);
+        } catch (\Exception $e) {
+            return $this->error('Something went wrong: ' . $e->getMessage(), 500);
         }
     }
-
 
 
 
