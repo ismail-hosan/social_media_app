@@ -49,6 +49,7 @@ Route::controller(UserAuthController::class)->group(function () {
 Route::group(['middleware' => ['jwt.verify', 'user']], function () {
     Route::post('logout', [UserAuthController::class, 'logout']);
     Route::get('profile/me', [UserAuthController::class, 'profileMe']);
+    Route::get('profile/data/{username}', [UserAuthController::class, 'profileData']);
     Route::post('refresh', [UserAuthController::class, 'refresh']);
     Route::get('information', [UserAuthController::class, 'information']);
 

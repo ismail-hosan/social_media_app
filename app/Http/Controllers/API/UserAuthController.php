@@ -38,7 +38,7 @@ class UserAuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
             'phone' => 'required|numeric|unique:users',
             'name' => 'required|string|max:255',
-            'country' => 'required|string|max:100', // 👈 Add this line
+            'country' => 'required|string|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -73,6 +73,21 @@ class UserAuthController extends Controller
             DB::rollBack();
             return $this->error([], $e->getMessage(), 400);
         }
+    }
+
+    public function profileData($username)
+    {
+        $user = User::where('username', $username)->select('id', 'username', 'email', 'phone', 'name', 'country', 'avatar')->first();
+
+        if (!$user) {
+            return $this->error([], 'User not found.', 404);
+        }
+
+        return $this->success(
+            $user,
+            'User data fetched successfully.',
+            200
+        );
     }
 
 
@@ -355,17 +370,28 @@ class UserAuthController extends Controller
                 }
             }
 
-            // Determine follow status
-            $followRelation = DB::table('follows')
+            $followStatus = 'none';
+
+            // 1. Check if I (auth user) sent request to the other user
+            $sentRequest = DB::table('follows')
                 ->where('user_id', $user->id)
                 ->where('follower_id', $authUser->id)
                 ->select('status')
                 ->first();
 
+            if ($sentRequest) {
+                $followStatus = $sentRequest->status === 'success' ? 'friend' : 'me_request';
+            } else {
+                // 2. Check if the other user sent me a request
+                $receivedRequest = DB::table('follows')
+                    ->where('user_id', $authUser->id)
+                    ->where('follower_id', $user->id)
+                    ->select('status')
+                    ->first();
 
-            $followStatus = 'none';
-            if ($followRelation) {
-                $followStatus = $followRelation->status === 'success' ? 'following' : 'requested';
+                if ($receivedRequest) {
+                    $followStatus = $receivedRequest->status === 'success' ? 'friend' : 'f_request';
+                }
             }
 
             // Get list of users this user has bookmarked (liked)
