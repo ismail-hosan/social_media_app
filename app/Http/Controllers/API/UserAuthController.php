@@ -345,26 +345,49 @@ class UserAuthController extends Controller
         try {
             $authUser = auth()->user();
             $user = $authUser;
+            $followStatus = 'me';
+            $isMe = true;  // default true, jodi onno user hoy seta update hobe
 
-            // If a different user_id is passed and it's not the current user
-            if ($request->filled('user_id') && $request->user_id != $authUser->id) {
-                $user = User::find($request->user_id);
+            // Check if viewing another user's profile
+            if ($request->filled('username') && $request->username !== $authUser->username) {
+                $user = User::where('username', $request->username)
+                    ->select('id', 'name', 'username', 'avatar', 'cover_image', 'status', 'location', 'base', 'bio', 'created_at')
+                    ->first();
 
                 if (!$user) {
                     return $this->error('User not found', 404);
                 }
+
+                // Since profile is not auth user, set isMe false
+                $isMe = false;
+
+                // Determine follow status
+                $followRelation = DB::table('follows')
+                    ->where('user_id', $user->id)
+                    ->where('follower_id', $authUser->id)
+                    ->select('status')
+                    ->first();
+
+                $followStatus = 'none';
+                if ($followRelation) {
+                    $followStatus = $followRelation->status === 'success' ? 'following' : 'requested';
+                }
             }
 
-            // Get list of users this user has liked
+            // Get liked users/bookmarks
             $likedUsers = $user->bookmarks()
-                ->with('bookmarkable:id,name,avatar') // Eager load socalMedia from the likeable (User)
+                ->with('bookmarkable:id,name,avatar')
                 ->get();
 
+            // Get social media links
+            $media = $user->socalMedia()->select('social_media_type', 'url')->get();
+
+            // Prepare response
             $response = [
                 'id' => $user->id,
                 'name' => $user->name,
-                'avatar' => $user->avatar ?? null,
-                'cover_image' => $user->cover_image ?? null,
+                'avatar' => $user->avatar,
+                'cover_image' => $user->cover_image,
                 'username' => $user->username,
                 'status' => $user->status,
                 'location' => $user->location,
@@ -372,16 +395,20 @@ class UserAuthController extends Controller
                 'joined' => 'Joined ' . $user->created_at->format('M Y'),
                 'bio' => json_decode($user->bio) ?? $user->bio,
                 'liked_users' => $likedUsers,
-                'media' => $user->socalMedia->select('social_media_type', 'url'),
+                'media' => $media,
+                'follow_status' => $followStatus,
+                'is_me' => $isMe,  // ei line add korben
             ];
 
             return $this->success([
                 'user' => $response,
             ], 'User retrieved successfully', 200);
-        } catch (\Exception $e) {
-            return $this->error('Something went wrong: ' . $e->getMessage(), 500);
+        } catch (\Throwable $th) {
+            return $this->error('User not found', 404);
         }
     }
+
+
 
 
 
