@@ -203,7 +203,7 @@ class FollowController extends Controller
         $userId = auth()->id();
 
         // Get IDs of users the authenticated user is following
-        $followingIds = Follow::where('user_id', $userId)
+        $followingIds = Follow::where('user_id', $userId)->where('status', 'success')
             ->pluck('follower_id') // Make sure this is the correct column
             ->toArray();
 
@@ -226,7 +226,7 @@ class FollowController extends Controller
 
                 // Hide name and avatar if post is marked as unknown
                 if ($post->unknown === 1) {
-                    $post->user->name = null;
+                    $post->user->name = 'unkown';
                     $post->user->avatar = null;
                 }
             }
