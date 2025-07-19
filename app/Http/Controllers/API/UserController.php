@@ -91,6 +91,7 @@ class UserController extends Controller
             'avatar' => ['sometimes', 'required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'industry' => ['sometimes', 'required', 'string', 'max:50'],
             'stages' => ['sometimes', 'required', 'string'],
+            'bio' => ['sometimes', 'required', 'string'],
         ]);
 
         if ($validation->fails()) {
@@ -100,7 +101,7 @@ class UserController extends Controller
         DB::beginTransaction();
 
         try {
-            $data = $request->only(['username', 'nickname', 'gender', 'industry', 'stages']);
+            $data = $request->only(['username', 'nickname', 'gender', 'industry', 'stages','bio']);
 
             // Handle avatar upload
             if ($request->hasFile('avatar')) {
