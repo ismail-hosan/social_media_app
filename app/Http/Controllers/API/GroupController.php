@@ -376,7 +376,6 @@ class GroupController extends Controller
 
         $conversation = Conversation::with('participants.participantable')->find($request->conversation_id);
         $test = Participant::where('conversation_id', $request->conversation_id)->get();
-        dd($test);
         if (!$conversation) {
             return $this->error('Conversation not found', 404);
         }
