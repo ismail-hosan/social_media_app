@@ -366,7 +366,7 @@ class GroupController extends Controller
     public function member(Request $request)
     {
         $validation = Validator::make($request->all(), [
-            'conversation_id' => 'required|integer',
+            'conversation_id' => 'required|integer|exists:wire_conversations,id',
             'type' => 'nullable|in:admin'
         ]);
 

@@ -68,7 +68,16 @@ class UserController extends Controller
     public function index(Request $request)
     {
         if ($request->ajax()) {
-            $data = User::where('is_admin', false)->where('id', '!=', Auth::id())->latest();
+            // Build query first without executing it
+            $query = User::query()->latest();
+
+            // Filter by country
+            if ($request->type) {
+                $query->where('country', $request->type);
+            }
+
+            $data = $query->get();
+
             return DataTables::of($data)
                 ->addIndexColumn()
                 ->addColumn('status', function ($data) {
@@ -115,7 +124,18 @@ class UserController extends Controller
                 ->make(true);
         }
 
-        return view('backend.layout.user.index');
+        $countries = User::where('status', 'active')
+            ->whereNotNull('country')
+            ->distinct()
+            ->pluck('country');
+
+        // Get country-wise user counts
+        $countryCounts = User::select('country', DB::raw('count(*) as total'))
+            ->groupBy('country')
+            ->get()
+            ->pluck('total', 'country');
+
+        return view('backend.layout.user.index', compact('countries','countryCounts'));
     }
 
     public function edit($id)

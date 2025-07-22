@@ -162,7 +162,7 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::post('/chat/message', 'sendMessage');
         Route::get('/chat/get/messages', 'getConversations');
         Route::get('/chat/get', 'getConversations');
-        Route::get('/chat/user/conversation/{user}', '');
+        Route::get('/chat/user/conversation/{user}', 'getUserConversation');
         Route::post('/chat/search', 'searchUsers');
         Route::post('/chat/create/covesation', 'createCovesation');
         Route::post('/chat/globalSearch', 'globalSearch');

@@ -61,7 +61,7 @@ class UserAuthController extends Controller
             $validated['otp'] = $this->generateOtp();
 
             $user = User::create($validated);
-            // $user->notify(new OtpNotification($validated['otp']));
+            $user->notify(new OtpNotification($validated['otp']));
 
             DB::commit();
             return $this->success(

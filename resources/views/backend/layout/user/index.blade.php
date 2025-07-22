@@ -11,6 +11,22 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive mt-4 p-4 card-datatable table-responsive pt-0">
+                    <div class="row">
+                        <div class="row mb-4">
+                            <!-- Type Dropdown -->
+                            <div class="col-lg-3">
+                                <label for="type" class="form-label">Country</label>
+                                <select id="type" class="form-control">
+                                    <option value="">-- Select Country --</option>
+                                    @foreach ($countries as $country)
+                                        <option value="{{ $country }}">{{ $country }}
+                                            ({{ $countryCounts[$country] ?? 0 }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                     <table class="table table-hover" id="data-table">
                         <thead>
                             <tr>
@@ -75,6 +91,9 @@
                         dom: "<'row justify-content-between table-topbar'<'col-md-2 col-sm-4 px-0'l><'col-md-2 col-sm-4 px-0'f>>tipr",
                         ajax: {
                             url: "{{ route('user.list') }}",
+                            data: function(d) {
+                                d.type = $('#type').val();
+                            },
                             type: "get",
                         },
 
@@ -87,8 +106,8 @@
                             {
                                 data: 'name',
                                 name: 'name',
-                                orderable: false,
-                                searchable: false
+                                orderable: true,
+                                searchable: true
                             },
                             {
                                 data: 'email',
@@ -111,8 +130,9 @@
                         ],
                     });
 
-                    new DataTable('#example', {
-                        responsive: true
+                    // Reload DataTable on country filter change
+                    $('#type').on('change', function() {
+                        dTable.ajax.reload();
                     });
                 }
             });
@@ -227,72 +247,72 @@
             }
         </script>
 
-<script>
-    async function deleteUser(id) {
-        const {
-            value: password
-        } = await Swal.fire({
-            icon: 'info',
-            title: "Are you sure you want to delete this account?",
-            input: "password",
-            inputLabel: "Enter your password",
-            inputPlaceholder: "Enter your password",
-            inputAttributes: {
-                maxlength: "100",
-                autocapitalize: "off",
-                autocorrect: "off"
-            },
-            confirmButtonText: "Yes",
-            showCancelButton: true,
-            cancelButtonText: "No"
-        });
+        <script>
+            async function deleteUser(id) {
+                const {
+                    value: password
+                } = await Swal.fire({
+                    icon: 'info',
+                    title: "Are you sure you want to delete this account?",
+                    input: "password",
+                    inputLabel: "Enter your password",
+                    inputPlaceholder: "Enter your password",
+                    inputAttributes: {
+                        maxlength: "100",
+                        autocapitalize: "off",
+                        autocorrect: "off"
+                    },
+                    confirmButtonText: "Yes",
+                    showCancelButton: true,
+                    cancelButtonText: "No"
+                });
 
-        if (password) {
-            let formData = new FormData();
-            formData.append('id', id);
-            formData.append('password', password);
-            formData.append('_token', '{{ csrf_token() }}');
+                if (password) {
+                    let formData = new FormData();
+                    formData.append('id', id);
+                    formData.append('password', password);
+                    formData.append('_token', '{{ csrf_token() }}');
 
-            $.ajax({
-                url: "{{ route('user.user.destroy') }}",
-                type: 'POST',
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(response) {
-                    console.log(response);
+                    $.ajax({
+                        url: "{{ route('user.user.destroy') }}",
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(response) {
+                            console.log(response);
 
-                    if (response.success) {
-                        Toast.fire({
-                            icon: 'success',
-                            title: response.message,
-                        });
-                        setTimeout(function() {
-                            location.reload();
-                        }, 2000);
-                    } else {
-                        Toast.fire({
-                            icon: 'error',
-                            title: response.message,
-                        });
-                    }
-                },
-                error: function(xhr) {
-                    if (xhr.status === 401) { // Handle incorrect password case
-                        Toast.fire({
-                            icon: 'error',
-                            title: xhr.responseJSON?.message || 'Incorrect Password',
-                        });
-                    } else {
-                        Toast.fire({
-                            icon: 'error',
-                            title: 'Something Went Wrong',
-                        });
-                    }
+                            if (response.success) {
+                                Toast.fire({
+                                    icon: 'success',
+                                    title: response.message,
+                                });
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 2000);
+                            } else {
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: response.message,
+                                });
+                            }
+                        },
+                        error: function(xhr) {
+                            if (xhr.status === 401) { // Handle incorrect password case
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: xhr.responseJSON?.message || 'Incorrect Password',
+                                });
+                            } else {
+                                Toast.fire({
+                                    icon: 'error',
+                                    title: 'Something Went Wrong',
+                                });
+                            }
+                        }
+                    });
                 }
-            });
-        }
-    }
-</script>
+            }
+        </script>
     @endpush
 @endsection
