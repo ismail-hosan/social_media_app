@@ -40,7 +40,8 @@ class User extends Authenticatable implements JWTSubject
         'cover_image',
         'bio',
         'location',
-        'website'
+        'website',
+        'base'
     ];
 
     /**

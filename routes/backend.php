@@ -76,6 +76,7 @@ Route::controller(UserController::class)->group(function () {
     Route::get('/users/list', 'index')->name('user.list');
     Route::get('/view/users/{id}', 'show')->name('show.user');
     Route::get('/status/users/{id}', 'status')->name('user.status');
+    Route::post('/users/base', 'verify')->name('user.verify');
     Route::post('/users/delete', 'destroy')->name('user.user.destroy');
 });
 

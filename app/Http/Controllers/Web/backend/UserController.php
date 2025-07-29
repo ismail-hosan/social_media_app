@@ -135,7 +135,7 @@ class UserController extends Controller
             ->get()
             ->pluck('total', 'country');
 
-        return view('backend.layout.user.index', compact('countries','countryCounts'));
+        return view('backend.layout.user.index', compact('countries', 'countryCounts'));
     }
 
     public function edit($id)
@@ -191,6 +191,43 @@ class UserController extends Controller
     {
         return $this->userServiceObj->show($id);
     }
+
+    public function verify(Request $request)
+    {
+        // Validate admin password
+        if (!Hash::check($request->password, Auth::user()->password)) {
+            return $this->error([], 'Incorrect Password', 401);
+        }
+
+        // Find the user
+        $user = User::find($request->id);
+        if (!$user) {
+            return $this->error([], 'User not found.', 404);
+        }
+
+        // Validate and sanitize 'verified' input
+        if (!in_array($request->verified, ['0', '1', 0, 1], true)) {
+            return $this->error([], 'Invalid verified value.', 422);
+        }
+
+        $verified = (int) $request->verified;
+
+        // Update verified status
+        $updated = $user->update(['base' => $verified]);
+
+        // Optional: Remove sessions if unverified (you can remove this if not needed)
+        if ($verified === 0) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
+
+        if ($updated) {
+            $statusText = $verified === 1 ? 'verified' : 'unverified';
+            return $this->success([], "User has been {$statusText}.", 200);
+        }
+
+        return $this->error([], 'Verification update failed. Please try again.', 500);
+    }
+
 
     public function status(int $id): JsonResponse
     {
