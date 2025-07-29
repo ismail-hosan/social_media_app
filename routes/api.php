@@ -57,6 +57,7 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
 
     // Route::post('change-password', [UserController::class, 'changePassword']);
     Route::post('profile-update', [UserController::class, 'updateUserInfo']);
+    Route::post('password-update', [UserController::class, 'changePassword']);
 
     // All post route
     Route::controller(PostController::class)->prefix('post')->group(function () {
@@ -66,6 +67,8 @@ Route::group(['middleware' => ['jwt.verify', 'user']], function () {
         Route::get('get', 'index');
         Route::get('highlight', 'highlight');
         Route::post('delete', 'destroy');
+        Route::get('edit/{post}', 'edit');
+        Route::post('update/{post}', 'update');
     });
 
     // All hobby route

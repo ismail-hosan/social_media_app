@@ -25,4 +25,10 @@ trait bloackeduser
         $block = BlockUser::where('user_id', $user_id)->where('blocked_user_id', auth()->id())->first();
         return $block ? true : false;
     }
+
+    // public function checkCoversationBlock($conversation_id)
+    // {
+    //     $block = BlockUser::where('user_id', auth()->id())->where('blocked_user_id', $conversation_id)->first();
+    //     return $block ? true : false;
+    // }
 }

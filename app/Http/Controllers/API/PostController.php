@@ -18,6 +18,7 @@ use App\Traits\apiresponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use PhpParser\Node\Expr\FuncCall;
 
 class PostController extends Controller
 {
@@ -159,6 +160,86 @@ class PostController extends Controller
             return $this->error($th->getMessage(), 'Error');
         }
     }
+
+    public function edit(Post $post)
+    {
+        $data = $this->posts->find($post->id);
+        return $this->success($data, 'Successfully!', 200);
+    }
+
+    public function update(Request $request, Post $post)
+    {
+        // Optional: authorize user owns the post
+        if ($post->user_id !== auth()->id()) {
+            return $this->error([], 'You are not authorized to update this post.', 403);
+        }
+
+        // Optional error check
+        $error = $this->check($post->id);
+        if ($error) {
+            return $error;
+        }
+
+        $validator = Validator::make($request->all(), [
+            'title' => 'nullable|string',
+            'description' => 'nullable|string',
+            'unknown' => 'nullable|in:true,false',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error([], $validator->errors(), 422);
+        }
+
+        $data = [];
+
+        // Only update fields if provided
+        if ($request->has('title')) {
+            $data['title'] = $request->title;
+        }
+
+        if ($request->has('description')) {
+            $data['description'] = $request->description;
+        }
+
+        if ($request->has('unknown')) {
+            $data['unknown'] = $request->input('unknown') === 'true' ? 1 : 0;
+        }
+
+        // Handle image upload
+        if ($request->hasFile('image')) {
+            $imagePath = Helper::uploadImage($request->file('image'), $post->image);
+            $data['file_url'] = $imagePath;
+        }
+
+        $post->update($data);
+
+        // Optional: Handle mentions if description is updated
+        if (isset($data['description'])) {
+            // Delete existing mentions for this post
+            Mention::where('post_id', $post->id)->delete();
+
+            // Extract new mentions from updated description
+            preg_match_all('/@(\w+)/', $data['description'], $mentionMatches);
+            $mentions = $mentionMatches[1];
+            foreach ($mentions as $mentionText) {
+                $mentionedUser = User::where('username', $mentionText)->first();
+                if ($mentionedUser) {
+                    Mention::create([
+                        'post_id' => $post->id,
+                        'user_id' => auth()->id(),
+                        'mentioned_id' => $mentionedUser->id,
+                    ]);
+                }
+            }
+        }
+
+        return $this->success($post, 'Post updated successfully!', 200);
+    }
+
+
+
+
 
 
     public function forYou(Request $request)

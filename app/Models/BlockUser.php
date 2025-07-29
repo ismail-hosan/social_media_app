@@ -9,7 +9,8 @@ class BlockUser extends Model
     protected $fillable = [
         'user_id',
         'blocked_user_id',
-        'created_at'
+        'created_at',
+        'conversation_id'
     ];
 
     /**

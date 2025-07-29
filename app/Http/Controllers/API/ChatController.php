@@ -163,7 +163,7 @@ class ChatController extends Controller
     {
         $user = auth()->user();
 
-        // Get the conversation and eager load relationships
+        // Get the conversation with relationships
         $conversation = Conversation::with([
             'messages.sendable',
             'messages.react',
@@ -172,14 +172,25 @@ class ChatController extends Controller
             ->select('wire_conversations.id', 'wire_conversations.type')
             ->findOrFail($id);
 
+        // Get the receiver (for private conversations)
+        $receiver = $conversation->type === ConversationType::GROUP
+            ? null
+            : $conversation->getReceiver();
+
+        // Check if user is blocked (only for private chats)
+        $is_blocked = false;
+        if ($conversation->type !== ConversationType::GROUP && $receiver) {
+            if ($this->checkUserBlocked($receiver->id) || $this->checkBlockedMe($receiver->id)) {
+                $is_blocked = true;
+            }
+        }
+
         // Mark the conversation as read
         $conversation->markAsRead();
 
-        // Map messages with sender and reaction details
+        // Map messages
         $messages = $conversation->messages->map(function ($message) use ($user) {
-            $reactions = $message->react->groupBy('react')->map(function ($group) {
-                return $group->count();
-            });
+            $reactions = $message->react->groupBy('react')->map(fn($group) => $group->count());
 
             return [
                 'id' => $message->id,
@@ -196,36 +207,42 @@ class ChatController extends Controller
             ];
         });
 
-        // Determine top info (either group or receiver)
-        $topInfo = null;
-
-        if ($conversation->type === ConversationType::GROUP) {
-            $group = $conversation->group;
-            $topInfo = [
+        // Determine top info
+        $topInfo = $conversation->type === ConversationType::GROUP
+            ? [
                 'type' => 'group',
-                'id' => $group->id ?? null,
-                'name' => $group->name ?? null,
-                'avatar' => $group->avatar_url ?? null,
-                'cover_image' => $group->cover->url ?? null,
-            ];
-        } else {
-            // Call the getReceiver() method manually
-            $receiver = $conversation->getReceiver();
-            $topInfo = [
+                'id' => $conversation->group->id ?? null,
+                'name' => $conversation->group->name ?? null,
+                'avatar' => $conversation->group->avatar_url ?? null,
+                'cover_image' => $conversation->group->cover->url ?? null,
+            ]
+            : [
                 'type' => 'private',
                 'id' => $receiver->id ?? null,
                 'name' => $receiver->name ?? null,
                 'avatar' => $receiver->avatar_url ?? $receiver->avatar ?? null,
             ];
+
+        // Check roles if it's a group conversation
+        $is_admin = false;
+        $is_owner = false;
+        if ($conversation->type === ConversationType::GROUP) {
+            $is_admin = $conversation->isAdmin($user);
+            $is_owner = $conversation->isOwner($user);
         }
 
+        // Final response
         return [
             'my_id' => $user->id,
             'conversation_id' => $conversation->id,
+            'is_blocked' => $is_blocked,
+            'is_admin' => $is_admin,
+            'is_owner' => $is_owner,
             'top_info' => $topInfo,
             'messages' => $messages,
         ];
     }
+
 
     public function createCovesation(Request $request)
     {
@@ -252,6 +269,7 @@ class ChatController extends Controller
     {
         $validation = Validator::make($request->all(), [
             'blocked_user_id' => 'required|integer|exists:users,id',
+            'conversation_id' => 'nullable|exists:wire_conversations,id',
         ]);
 
         if ($validation->fails()) {
@@ -266,6 +284,7 @@ class ChatController extends Controller
 
         $alreadyBlocked = BlockUser::where('user_id', $authUser->id)
             ->where('blocked_user_id', $request->blocked_user_id)
+            ->where('conversation_id', $request->conversation_id)
             ->first();
 
         if ($alreadyBlocked) {
@@ -276,6 +295,7 @@ class ChatController extends Controller
         $block = BlockUser::create([
             'user_id' => $authUser->id,
             'blocked_user_id' => $request->blocked_user_id,
+            'conversation_id' => $request->conversation_id,
             'created_at' => now()
         ]);
 

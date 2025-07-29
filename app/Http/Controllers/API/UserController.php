@@ -31,6 +31,7 @@ class UserController extends Controller
             'avatar' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'cover_image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'phone' => ['sometimes', 'nullable', 'string'],
+            'birthday' => ['sometimes', 'nullable', 'date'],
         ]);
 
         if ($validation->fails()) {
@@ -48,6 +49,7 @@ class UserController extends Controller
                 'location',
                 'website',
                 'phone',
+                'birthday'
             ]));
 
             if ($request->hasFile('avatar')) {
@@ -72,6 +74,7 @@ class UserController extends Controller
                     'avatar' => $user->avatar,
                     'cover_image' => $user->cover_image,
                     'phone' => $user->phone,
+                    'birthday' => $user->birthday,
                     'bio' => $user->bio,
                 ],
             ], 'User updated successfully', 200);
@@ -101,7 +104,7 @@ class UserController extends Controller
         DB::beginTransaction();
 
         try {
-            $data = $request->only(['username', 'nickname', 'gender', 'industry', 'stages','bio']);
+            $data = $request->only(['username', 'nickname', 'gender', 'industry', 'stages', 'bio']);
 
             // Handle avatar upload
             if ($request->hasFile('avatar')) {
@@ -124,8 +127,6 @@ class UserController extends Controller
     }
 
 
-
-
     /**
      * Change Password
      * @param Request $request
@@ -133,26 +134,29 @@ class UserController extends Controller
      */
     public function changePassword(Request $request)
     {
+        // Validate the request input
         $validation = Validator::make($request->all(), [
             'old_password' => 'required|string|max:255',
-            'new_password' => 'required|string|max:255',
+            'new_password' => 'required|string|min:8|confirmed', // Use Laravel's password confirmation
         ]);
 
         if ($validation->fails()) {
-            return $this->error([], $validation->errors(), 500);
+            return $this->error([], $validation->errors(), 422); // Use 422 Unprocessable Entity
         }
 
         try {
-            $user = User::where('id', Auth::id())->first();
-            if (password_verify($request->old_password, $user->password)) {
-                $user->password = Hash::make($request->new_password);
-                $user->save();
-                return $this->success([], "Password changed successfully", 200);
-            } else {
-                return $this->error([], "Old password is incorrect", 500);
+            $user = Auth::user();
+
+            if (!Hash::check($request->old_password, $user->password)) {
+                return $this->error([], "Old password is incorrect", 403);
             }
+
+            $user->password = Hash::make($request->new_password);
+            $user->save();
+
+            return $this->success([], "Password changed successfully", 200);
         } catch (\Exception $e) {
-            return $this->error([], $e->getMessage(), 500);
+            return $this->error([], "An unexpected error occurred", 500);
         }
     }
 

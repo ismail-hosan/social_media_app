@@ -61,7 +61,7 @@ class UserAuthController extends Controller
             $validated['otp'] = $this->generateOtp();
 
             $user = User::create($validated);
-            $user->notify(new OtpNotification($validated['otp']));
+            // $user->notify(new OtpNotification($validated['otp']));
 
             DB::commit();
             return $this->success(
@@ -153,8 +153,6 @@ class UserAuthController extends Controller
     }
 
 
-
-
     public function forgetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -171,7 +169,7 @@ class UserAuthController extends Controller
         $otp = $this->generateOtp();
         $user->notify(new OtpNotification($otp));
         $user->otp = $otp;
-        $user->is_varified = false;
+        $user->email_verified_at = null;
         $user->save();
 
         return $this->success(['otp', $otp], 'Check Your Email for Password Reset Otp', 200);
@@ -235,10 +233,11 @@ class UserAuthController extends Controller
         // Generate and save new OTP
         $otp = $this->generateOtp();
         $user->otp = $otp;
+        $user->email_verified_at = null;
         $user->save();
 
         // Send OTP notification
-        // $user->notify(new OtpNotification($otp));
+        $user->notify(new OtpNotification($otp));
 
         return $this->success(['otp' => $otp], 'Check your email for the password reset OTP.', 200);
     }

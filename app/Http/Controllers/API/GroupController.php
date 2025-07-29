@@ -90,7 +90,8 @@ class GroupController extends Controller
     {
         $validation = Validator::make($request->all(), [
             'conversation_id' => 'required|integer|exists:wire_conversations,id',
-            'user_id' => 'required|integer|exists:users,id',
+            'user_ids' => 'required|array|min:1',
+            'user_ids.*' => 'integer|exists:users,id',
         ]);
 
         if ($validation->fails()) {
@@ -109,7 +110,7 @@ class GroupController extends Controller
             // Check if the authenticated user is a participant
             $participant = $conversation->participants()
                 ->where('participantable_id', $authUser->id)
-                ->where('participantable_type', get_class($authUser)) // if polymorphic
+                ->where('participantable_type', get_class($authUser))
                 ->first();
 
             if (!$participant) {
@@ -118,23 +119,41 @@ class GroupController extends Controller
 
             // Conditional checks based on group privacy
             if ($conversation->group->type === 'private') {
-                if (in_array($participant->role, [ParticipantRole::OWNER, ParticipantRole::ADMIN])) {
+                if (!in_array($participant->role, [ParticipantRole::OWNER])) {
                     return $this->error([], 'Only the owner can add members to a private group.', 403);
                 }
             }
-            // Add the specified user
-            $newUser = User::find($request->user_id);
-            $data = $conversation->addParticipant($newUser);
-            if ($data) {
-                $grouprequest = GroupRequest::where('user_id', $request->user_id)
-                    ->where('conversation_id', $request->conversation_id)
-                    ->first();
 
-                if ($grouprequest) {
-                    $grouprequest->delete(); // now safe to delete
+            $added = [];
+            $skipped = [];
+
+            foreach ($request->user_ids as $userId) {
+                $newUser = User::find($userId);
+
+                // Skip if user is already a participant
+                $alreadyExists = $conversation->participants()
+                    ->where('participantable_id', $userId)
+                    ->where('participantable_type', get_class($newUser))
+                    ->exists();
+
+                if ($alreadyExists) {
+                    $skipped[] = $userId;
+                    continue;
                 }
+
+                $data = $conversation->addParticipant($newUser);
+                $added[] = $userId;
+
+                // Clean up group request
+                GroupRequest::where('user_id', $userId)
+                    ->where('conversation_id', $request->conversation_id)
+                    ->delete();
             }
-            return $this->success($data, 'Member added successfully!', 200);
+
+            return $this->success([
+                'added' => $added,
+                'skipped' => $skipped,
+            ], 'Members processed successfully.', 200);
         } catch (\Throwable $th) {
             return $this->error([], [$th->getMessage()], 422);
         }
