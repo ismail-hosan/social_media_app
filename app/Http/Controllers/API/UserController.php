@@ -32,6 +32,7 @@ class UserController extends Controller
             'cover_image' => ['sometimes', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'phone' => ['sometimes', 'nullable', 'string'],
             'birthday' => ['sometimes', 'nullable', 'date'],
+            'gender' => ['sometimes', 'nullable', 'string', 'in:male,female'],
         ]);
 
         if ($validation->fails()) {
@@ -49,7 +50,8 @@ class UserController extends Controller
                 'location',
                 'website',
                 'phone',
-                'birthday'
+                'birthday',
+                'gender'
             ]));
 
             if ($request->hasFile('avatar')) {
@@ -76,6 +78,7 @@ class UserController extends Controller
                     'phone' => $user->phone,
                     'birthday' => $user->birthday,
                     'bio' => $user->bio,
+                    'gender' => $user->gender
                 ],
             ], 'User updated successfully', 200);
         } catch (\Exception $e) {

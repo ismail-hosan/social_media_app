@@ -30,10 +30,12 @@
                     <div class="col-md-4">
                         <h3>Bio</h3>
                         @php
-                            $decodedBio = json_decode($user->bio ?? '');
+                            $decodedBio = json_decode($user->bio, true); // decode as associative array
                         @endphp
 
-                        <p>{{ $decodedBio }}</p>
+                        @foreach ($decodedBio as $key => $value)
+                            <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
+                        @endforeach
                     </div>
                 </div>
                 <div class="row">
