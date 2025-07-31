@@ -411,6 +411,8 @@ class UserAuthController extends Controller
                 'username' => $user->username,
                 'status' => $user->status,
                 'location' => $user->location,
+                'birthday' => $user->birthday,
+                'gender' => $user->gender,
                 'base' => $user->base,
                 'joined' => 'Joined ' . $user->created_at->format('M Y'),
                 'bio' => is_string($user->bio) ? json_decode($user->bio, true) ?? $user->bio : $user->bio,
@@ -418,6 +420,7 @@ class UserAuthController extends Controller
                 'media' => $media,
                 'follow_status' => $followStatus,
                 'is_me' => $user->id === $authUser->id,
+
             ];
 
             return $this->success([

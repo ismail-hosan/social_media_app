@@ -33,9 +33,13 @@
                             $decodedBio = json_decode($user->bio, true); // decode as associative array
                         @endphp
 
-                        @foreach ($decodedBio as $key => $value)
-                            <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
-                        @endforeach
+                        @if (!empty($decodedBio) && (is_array($decodedBio) || is_object($decodedBio)))
+                            @foreach ($decodedBio as $key => $value)
+                                <p><strong>{{ ucfirst($key) }}:</strong> {{ $value }}</p>
+                            @endforeach
+                        @else
+                            <p>No bio data available.</p>
+                        @endif
                     </div>
                 </div>
                 <div class="row">
