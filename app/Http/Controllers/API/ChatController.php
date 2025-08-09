@@ -56,7 +56,7 @@ class ChatController extends Controller
                 'participants' => function ($query) {
                     $query->where('participantable_id', '!=', auth()->id())
                         ->select('participantable_type', 'participantable_id', 'conversation_id')
-                        ->with('participantable:id,name,avatar');
+                        ->with('participantable:id,name,avatar,base');
                 },
                 'group.cover',
                 'lastMessage'

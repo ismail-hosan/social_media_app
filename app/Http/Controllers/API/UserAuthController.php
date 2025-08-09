@@ -395,7 +395,7 @@ class UserAuthController extends Controller
 
             // Get list of users this user has bookmarked (liked)
             $likedUsers = $user->bookmarks()
-                ->with('bookmarkable:id,name,avatar')
+                ->with('bookmarkable:id,name,avatar,base')
                 ->get();
 
             // Retrieve social media links

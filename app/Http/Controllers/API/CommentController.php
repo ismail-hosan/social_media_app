@@ -19,7 +19,7 @@ class CommentController extends Controller
     {
         $comments = Comment::where('commentable_id', $id)
             ->whereNull('parent_id') // Only top-level comments
-            ->with(['user:id,name,avatar', 'replies'])
+            ->with(['user:id,name,avatar,base', 'replies'])
             ->get()
             ->map(function ($comment) {
                 return $this->transformComment($comment); // Recursive
@@ -71,7 +71,7 @@ class CommentController extends Controller
             'parent_id' => $comment->id,
         ]);
 
-        $reply->load(['user:id,name,avatar', 'replies']);
+        $reply->load(['user:id,name,avatar,base', 'replies']);
 
         return response()->json([
             'status' => true,
